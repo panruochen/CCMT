@@ -1,4 +1,4 @@
-MakTempl
+CCMT
 ========
 
-A configurable Makefile Template for GCC Toolchains
+A CONFIGURABLE COMMON MAKEFILE TEMPLATE for GCC Toolchains
