@@ -1,0 +1,14 @@
+#!/bin/bash
+MSYS_RD="C:/MinGW/msys/1.0"
+
+if [ -z "$MSYSTEM" ]; then
+  MSYSTEM=MINGW32
+fi
+
+if [ $MSYSTEM == MINGW32 ]; then
+  export PATH=".:/usr/local/bin:/mingw/bin:/bin:$PATH"
+else
+  export PATH=".:/usr/local/bin:/bin:/mingw/bin:$PATH"
+fi
+source $MSYS_RD/home/$USERNAME/.profile
+

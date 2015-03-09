@@ -1,0 +1,208 @@
+
+if !has("gui_running") && v:progname == "vim"
+if $LANG =~ "zh_CN.UTF-8"
+  let lang = "UTF-8"
+elseif $LANG == "C.GBK"
+  let lang = "cp936"
+endif
+
+exec "set encoding=" . lang
+exec "set fileencoding=" . lang
+exec "language messages " . $LANG
+exec "set termencoding=" . lang
+
+endif
+
+set fileencodings=utf-8,ucs-bom,cp936
+
+" ================================
+"  My favorite vim configurations
+" ================================
+
+if $TERM == "xterm"
+  colorscheme evening
+endif
+
+syntax on
+set autoindent
+set cindent
+set nobackup
+set hlsearch
+set nocompatible
+set noerrorbells
+
+" search options
+set noignorecase
+set incsearch
+
+set ruler
+
+set shortmess=a
+set cmdheight=2
+if has("cscope")
+"    set csprg=/usr/bin/cscope
+"    set csto=1
+"    set cst
+"    set csverb
+"    set cspc=3
+    "add any database in current dir
+
+    let cs_file=findfile("cscope.out", ".;")
+    "echo cscope_file
+    if !empty(cs_file) && filereadable(cs_file)
+        let cs_pref=matchstr(cs_file, ".*/")
+        silent! execute "cs add " . cs_file . "  " . cs_pref
+        "execute "cs add " . cscope_file
+    endif
+endif
+
+" status-line options
+"set statusline=\ %F%m%r%h\ %w\ \ CWD:\ %r%{CurDir()}%h\ \ \ Line:\ %l/%L:%c
+set laststatus=2
+set statusline=%F\ %m%r%h\ %w\ \ Line:\ %l/%L:%c
+
+function! CurDir()
+  let curdir = substitute(getcwd(), '/Users/amir/', "~/", "g")
+   return curdir
+endfunction
+
+set showmode
+
+filetype on
+filetype plugin on
+filetype indent on
+
+if exists("tags")
+	set tag=tags
+endif
+
+" Go to last file if invoked without arguments.
+autocmd VimEnter * nested if
+  \ argc() == 0 && bufname("%") == "" |
+  \   exec "normal! `0" |
+  \ endif
+" When editing a file, always jump to the last known cursor position.
+" Don't do it when the position is invalid or when inside an event handler
+" (happens when dropping a file on gvim).
+autocmd BufReadPost *
+  \ if line("'\"") > 1 && line("'\"") <= line("$") |
+  \   exec "normal! g`\"" |
+  \ endif
+
+"function! <SID>StripTrailingWhiteSpaces()
+"    let l = line(".")
+"    let c = col(".")
+"    %s/\s\+$//e
+"    call cursor(l, c)
+"endfun
+" Automatically remove all trailing spaces
+"autocmd BufWritePre * call <SID>StripTrailingWhiteSpaces()
+autocmd BufWritePre *  if &modified | let l = line(".") | let c = col(".") | %s/\s\+$//e | call cursor(l, c) | endif
+
+au FileType xml,htm,html set mps+=<:>
+
+" Maximize the windows if gvim is running
+autocmd GUIEnter * simalt ~x
+
+set tabstop=4 softtabstop=4 shiftwidth=4
+
+autocmd BufEnter *.c,*.h,*.cpp,*.hpp,*.cc,*.cxx,*.S,*.s set noexpandtab
+
+" Show tabs
+if v:progname != "vimdiff"
+"  autocmd BufEnter *.c,*.h,*.cpp,*.hpp,*.cc,*.cxx,*.S,*.s set list listchars=tab:>-
+endif
+
+"================================="
+"                                 "
+"     Favorite keymap settings    "
+"                                 "
+"================================="
+inoremap <C-S> <ESC>:update<CR>:startinsert<CR>
+nnoremap <C-S> :update<CR>
+
+inoremap <C-F4>  <ESC>:xall<CR>
+nnoremap <C-F4>  :xall<CR>
+
+" Remove spaces of one tabstop
+function <SID>vRemoveSpacesOfTab() range
+	exec a:firstline . "," . a:lastline . 's/^\( \{' . &tabstop . '\}\|\t\)//'
+endfunction
+function <SID>vInsertSpacesOfTab() range
+	if &expandtab
+		let spaces = ''
+		let i = 0
+		while i < &tabstop
+			let spaces .= ' '
+			let i += 1
+		endwhile
+	else
+		let spaces = '\t'
+	endif
+	exec a:firstline . "," . a:lastline . 's/^/'  . spaces . '/'
+endfunction
+
+" Remove one leading tab (in visual mode)
+"vnoremap <BS>  :s/^\t//<CR>:let @/=""<CR><ESC>gv
+vnoremap <Leader><BS>  :call <SID>vRemoveSpacesOfTab()<CR>:let @/=''<CR><ESC>gv
+
+" Insert one leading tab (in visual mode)
+"vnoremap <TAB> :s/^/\t/<CR>:let @/=""<CR><ESC>gv
+vnoremap <Leader><TAB>  :call <SID>vInsertSpacesOfTab()<CR>:let @/=''<CR><ESC>gv
+
+" Mapped keys for NERDTree plugin
+noremap <F3> :NERDTreeToggle<CR>
+"#let NERDTreeIgnore = ['\.o$\|\.ko$']
+let NERDTreeIgnore = ['\.o$', '\~$', '\.ko$', '\.mod\.c$', 'modules\.order$', 'modules\.builtin$']
+"
+let NERDTreeBookmarksFile = "~/.NERDTreeBookmarks"
+let NERDTreeShowBookmarks = 1
+let NERDTreeStatusline = -1
+
+fun! ReadMan()
+" Assign current word under cursor to a script variable:
+  let l:man_word = expand('<cword>')
+" Read in the manpage for man_word (col -b is for formatting):
+  :exec ":! man " . l:man_word
+endfun
+
+" Remap CTRL-] to work as :GtagsCursor
+nnoremap <C-]> :GtagsCursor<CR>
+
+" Use <TAB> key to switch between windows in NORMAL MODE
+nnoremap <TAB> <C-W>W
+
+" Quick Replace
+"
+nnoremap <Leader>s   :%s/\<<C-r><C-w>\>//g<Left><Left>
+nnoremap <Leader>S   :%s/\<<C-r><C-w>\>//g<Left><Left>
+vnoremap <Leader>s   y:/\<<C-r>"\>//g<Left><Left>
+vnoremap <Leader>S   y:/\<<C-r>"\>//g<Left><Left>
+" Display registers
+"
+nnoremap <Leader>r   :registers<CR>
+
+nnoremap <Leader>]   :let &number = !&number<CR>
+nnoremap <Leader>\   :let @/ = ''<CR>
+
+
+"=========================================================================================================
+let g:EasyGrepRecursive = 1
+
+
+if v:progname ==? "gvim.exe" || v:progname ==? 'gvim'
+  if has('gui_running')
+    colorscheme murphy
+    set guifont=Consolas:h13
+    set guioptions-=m  "remove menu bar
+    set guioptions-=T  "remove toolbar
+  endif
+
+  if fnamemodify(&shell,':t') !=? 'bash.exe'
+    exec 'source ' . expand('<sfile>:p:h') . '/bash_config.vim'
+  endif
+endif
+
+set backspace=indent,eol,start
+hi LineNr guifg=purple gui=underline
+hi LineNr ctermfg=Magenta cterm=underline
