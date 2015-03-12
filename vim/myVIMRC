@@ -1,44 +1,52 @@
-
+" ================================
+"  Language setting
+" ================================
 if !has("gui_running") && v:progname == "vim"
-if $LANG =~ "zh_CN.UTF-8"
-  let lang = "UTF-8"
-elseif $LANG == "C.GBK"
-  let lang = "cp936"
-endif
+  if $LANG =~ "zh_CN.UTF-8"
+    let lang = "UTF-8"
+  elseif $LANG == "C.GBK"
+    let lang = "cp936"
+  endif
 
-exec "set encoding=" . lang
-exec "set fileencoding=" . lang
-exec "language messages " . $LANG
-exec "set termencoding=" . lang
-
+  exec "set encoding=" . lang
+  exec "set fileencoding=" . lang
+  exec "language messages " . $LANG
+  exec "set termencoding=" . lang
 endif
 
 set fileencodings=utf-8,ucs-bom,cp936
-
-" ================================
-"  My favorite vim configurations
-" ================================
 
 if $TERM == "xterm"
   colorscheme evening
 endif
 
-syntax on
-set autoindent
-set cindent
-set nobackup
-set hlsearch
-set nocompatible
-set noerrorbells
+exec 'set runtimepath+=' . expand('<sfile>:p:h')
+if v:progname =~? 'gVIM'
+  colorscheme murphy
+  set guifont=Consolas:h13
+  set guioptions-=m  "remove menu bar
+  set guioptions-=T  "remove toolbar
+
+  if fnamemodify(&shell,':t') !=? 'bash'
+    exec 'source ' . expand('<sfile>:p:h') . '/bash_config.vim'
+  endif
+endif
+
+
+
+set autoindent cindent nobackup hlsearch nocompatible noerrorbells
 
 " search options
-set noignorecase
-set incsearch
+set noignorecase incsearch
 
-set ruler
+set showmode ruler
 
 set shortmess=a
 set cmdheight=2
+" Tabstop Setting
+"
+set tabstop=4 softtabstop=4 shiftwidth=4
+
 if has("cscope")
 "    set csprg=/usr/bin/cscope
 "    set csto=1
@@ -51,7 +59,7 @@ if has("cscope")
     "echo cscope_file
     if !empty(cs_file) && filereadable(cs_file)
         let cs_pref=matchstr(cs_file, ".*/")
-        silent! execute "cs add " . cs_file . "  " . cs_pref
+        silent! exec "cs add " . cs_file . "  " . cs_pref
         "execute "cs add " . cscope_file
     endif
 endif
@@ -61,13 +69,14 @@ endif
 set laststatus=2
 set statusline=%F\ %m%r%h\ %w\ \ Line:\ %l/%L:%c
 
-function! CurDir()
-  let curdir = substitute(getcwd(), '/Users/amir/', "~/", "g")
-   return curdir
-endfunction
+"
+" Auto commands
+"
+autocmd BufEnter *.c,*.h,*.cpp,*.hpp,*.cc,*.cxx,*.S,*.s set noexpandtab
 
-set showmode
+"execute pathogen#infect()
 
+syntax on
 filetype on
 filetype plugin on
 filetype indent on
@@ -89,22 +98,13 @@ autocmd BufReadPost *
   \   exec "normal! g`\"" |
   \ endif
 
-"function! <SID>StripTrailingWhiteSpaces()
-"    let l = line(".")
-"    let c = col(".")
-"    %s/\s\+$//e
-"    call cursor(l, c)
-"endfun
-" Automatically remove all trailing spaces
-"autocmd BufWritePre * call <SID>StripTrailingWhiteSpaces()
 autocmd BufWritePre *  if &modified | let l = line(".") | let c = col(".") | %s/\s\+$//e | call cursor(l, c) | endif
 
-au FileType xml,htm,html set mps+=<:>
+autocmd FileType xml,htm,html set mps+=<:>
 
 " Maximize the windows if gvim is running
 autocmd GUIEnter * simalt ~x
 
-set tabstop=4 softtabstop=4 shiftwidth=4
 
 autocmd BufEnter *.c,*.h,*.cpp,*.hpp,*.cc,*.cxx,*.S,*.s set noexpandtab
 
@@ -113,11 +113,9 @@ if v:progname != "vimdiff"
 "  autocmd BufEnter *.c,*.h,*.cpp,*.hpp,*.cc,*.cxx,*.S,*.s set list listchars=tab:>-
 endif
 
-"================================="
-"                                 "
-"     Favorite keymap settings    "
-"                                 "
-"================================="
+"==================="
+" Keymap setting
+"==================="
 inoremap <C-S> <ESC>:update<CR>:startinsert<CR>
 nnoremap <C-S> :update<CR>
 
@@ -126,7 +124,8 @@ nnoremap <C-F4>  :xall<CR>
 
 " Remove spaces of one tabstop
 function <SID>vRemoveSpacesOfTab() range
-	exec a:firstline . "," . a:lastline . 's/^\( \{' . &tabstop . '\}\|\t\)//'
+	exec a:firstline . "," . a:lastline . 's/^\( \{' . &tabstop . '\}\|\t\)//e'
+	let @/ = ''
 endfunction
 function <SID>vInsertSpacesOfTab() range
 	if &expandtab
@@ -140,15 +139,15 @@ function <SID>vInsertSpacesOfTab() range
 		let spaces = '\t'
 	endif
 	exec a:firstline . "," . a:lastline . 's/^/'  . spaces . '/'
+	let @/ = ''
 endfunction
 
-" Remove one leading tab (in visual mode)
+" Insert/Remove a `tab' of spaces (in visual mode)
 "vnoremap <BS>  :s/^\t//<CR>:let @/=""<CR><ESC>gv
-vnoremap <Leader><BS>  :call <SID>vRemoveSpacesOfTab()<CR>:let @/=''<CR><ESC>gv
-
-" Insert one leading tab (in visual mode)
 "vnoremap <TAB> :s/^/\t/<CR>:let @/=""<CR><ESC>gv
-vnoremap <Leader><TAB>  :call <SID>vInsertSpacesOfTab()<CR>:let @/=''<CR><ESC>gv
+vnoremap <BS>  :call <SID>vRemoveSpacesOfTab()<CR><ESC>gv
+vnoremap <TAB> :call <SID>vInsertSpacesOfTab()<CR><ESC>gv
+
 
 " Mapped keys for NERDTree plugin
 noremap <F3> :NERDTreeToggle<CR>
@@ -159,12 +158,15 @@ let NERDTreeBookmarksFile = "~/.NERDTreeBookmarks"
 let NERDTreeShowBookmarks = 1
 let NERDTreeStatusline = -1
 
-fun! ReadMan()
-" Assign current word under cursor to a script variable:
-  let l:man_word = expand('<cword>')
-" Read in the manpage for man_word (col -b is for formatting):
-  :exec ":! man " . l:man_word
-endfun
+function <SID>SwitchTabStop(ts)
+	let &tabstop     = a:ts
+	let &softtabstop = a:ts
+	let &shiftwidth  = a:ts
+endfunction
+
+noremap  <Leader>t4  :call <SID>SwitchTabStop(4)<CR>
+noremap  <Leader>t8  :call <SID>SwitchTabStop(8)<CR>
+nnoremap <Leader>tc  :s/^\(\s*\)\([^#]\)/\1#\2/<CR>:let @/=''<CR>
 
 " Remap CTRL-] to work as :GtagsCursor
 nnoremap <C-]> :GtagsCursor<CR>
@@ -182,27 +184,16 @@ vnoremap <Leader>S   y:/\<<C-r>"\>//g<Left><Left>
 "
 nnoremap <Leader>r   :registers<CR>
 
+" Toggle line number
+"
 nnoremap <Leader>]   :let &number = !&number<CR>
+" Hide search highlighting
+"
 nnoremap <Leader>\   :let @/ = ''<CR>
 
-
-"=========================================================================================================
-let g:EasyGrepRecursive = 1
-
-
-if v:progname ==? "gvim.exe" || v:progname ==? 'gvim'
-  if has('gui_running')
-    colorscheme murphy
-    set guifont=Consolas:h13
-    set guioptions-=m  "remove menu bar
-    set guioptions-=T  "remove toolbar
-  endif
-
-  if fnamemodify(&shell,':t') !=? 'bash.exe'
-    exec 'source ' . expand('<sfile>:p:h') . '/bash_config.vim'
-  endif
-endif
+nnoremap K   kJ
 
 set backspace=indent,eol,start
 hi LineNr guifg=purple gui=underline
 hi LineNr ctermfg=Magenta cterm=underline
+

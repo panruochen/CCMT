@@ -6,6 +6,12 @@ from mutagen.mp3 import MP3
 from mutagen.easyid3 import EasyID3
 from mutagen.flac import FLAC
 
+
+FF_PROBE   = 'd:/Tools/ffmpeg/bin/ffprobe'
+
+PROBER = 'mutagen'
+#PROBER == 'ffprobe'
+
 #################################################################################
 class xencoding :
     def __init__(self) :
@@ -68,6 +74,54 @@ class MediaProbe :
     def get_info(self, file):
         pass
 
+class MediaProbeFFMPEG(MediaProbe) :
+    def __init__(self) :
+        MediaProbe.__init__(self)
+    def run_ffprobe(file) :
+        msg = None
+        sp = subprocess.Popen([FF_PROBE, '-hide_banner', '-i', file], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = sp.communicate()
+        if sp.returncode == 0 and err is not None :
+            try:
+                msg = err.decode('utf-8')
+            except:
+                msg = err.decode('ascii')
+        return sp.returncode, msg
+
+    def get_info(self, file):
+        media = None
+        ret, msg = run_ffprobe(file)
+        if ret == 0 and msg[0] != '[' :
+            for line in msg.split('\n'):
+                fx = line.split(',')
+                if len(fx) >= 3 and fx[0] == 'Input #0' :
+                    fx[1] = fx[1].strip()
+                    if fx[1] in ('jpeg_pipe', 'png_pipe', 'gif') :
+                        pass
+                    elif fx[1] == 'mp3' :
+                        media = Media()
+                        media.type = 'mp3'
+                        c = fx[2].split("'")
+                        media.name = c[1]
+                        state = 0
+    #                else :
+    #                    print(msg, '\n')
+                elif state == 0 :
+                    fx = line.split(':')
+                    if len(fx) >= 1 :
+                        fx[0] = fx[0].strip()
+                        if fx[0] == 'Duration' :
+                            fx = line.split()
+                            media.duration = fx[1].rstrip(',')
+                            media.bitrate = fx[5]
+                            state = -1
+                            break
+                        elif fx[0] == 'artist' :
+                            media.artist = fx[1].strip()
+                        elif fx[0] == 'title' :
+                            media.title = fx[1].strip()
+        return media
+
 class MediaProbeMutagen(MediaProbe) :
     def __init__(self) :
         MediaProbe.__init__(self)
@@ -115,12 +169,6 @@ def should_move(s, d) :
         pass
     return False
 
-def usage() :
-    print("Usage: %s --from-dir=FROM_DIR --to-dir=TO_DIR [--duration=DURATION] [--bitrate=BITRATE]" % sys.argv[0], file=sys.stderr)
-    print("""
-        Reclaim high quality media files with a mininal bitrate BITRATE and duration DURATION
-        from FROM_DIR to TO_DIR""" , file=sys.stderr)
-
 #===========================================================================
 # Main
 #===========================================================================
@@ -131,7 +179,7 @@ sv_target_dir   = None
 sv_source_dir   = None
 
 try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], "b:d:t:f:", (['bitrate=', 'duration=', 'from-dir=', 'to-dir=']))
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "d:t:f:", (['duration=', 'from-dir=', 'to-dir=']))
 except getopt.GetoptError as err:
     print(str(err))
     sys.exit(2)
@@ -139,8 +187,6 @@ except getopt.GetoptError as err:
 for o, a in opts:
     if o == "-d" or o == '--duration':
         sv_min_duration = int(a)
-    elif o == "-b" or o == '--bitrate':
-        sv_min_bitrate = int(a)
     elif o == '-f' or o == '--from-dir':
         sv_source_dir = a
     elif o == '-t' or o == '--to-dir':
@@ -148,14 +194,17 @@ for o, a in opts:
     else:
         raise Exception("Unknown option " + o)
 
+state = -1
 count = 0
 media = None
 medialist = []
 
-mp = MediaProbeMutagen()
+if PROBER == 'mutagen' :
+    mp = MediaProbeMutagen()
+elif PROBER == 'ffprobe' :
+    mp = MediaProbeFfprobe()
 
 if sv_source_dir is None or sv_target_dir is None :
-    usage()
     exit(0)
 
 for root,dirs,files in os.walk(sv_source_dir) :
@@ -167,20 +216,14 @@ for root,dirs,files in os.walk(sv_source_dir) :
         if media is not None :
             medialist.append(media)
 
-print("%u media files are found from %u files\n" % (len(medialist),count))
+print("%u media files reclaimed from %u cached files\n" % (len(medialist),count))
 tr_table = { ord('"') : ' ', ord("'"):' ', ord('/'):' ', ord('\\'):' ', ord(':'):' ' };
 for media in medialist :
     if media.duration >= sv_min_duration and media.bitrate >= sv_min_bitrate : #and media.title is not None :
-        if media.title.string is not None :
-            target_name = sv_target_dir + '/' + media.title.string.translate(tr_table) + '.' + media.type
-        else :
-            target_name = sv_target_dir + '/' + os.path.basename(media.name) + '.' + media.type
+        target_name = sv_target_dir + '/' + media.title.string.translate(tr_table) + '.' + media.type
         if should_move(media.name, target_name) :
-            print("Move %s to %s" % (media.name, target_name))
+            print("Move %s to %s" % (media.name, sv_target_dir))
             media.dump()
-            try:
-                shutil.move(media.name, target_name)
-            except:
-                print('Ignore %s' % media.name)
+            shutil.move(media.name, target_name)
         else :
             print("Target file \"%s\" exists." % target_name)
