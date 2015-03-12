@@ -126,7 +126,7 @@ def usage() :
 #===========================================================================
 
 sv_min_duration = 60
-sv_min_bitrate  = 192000
+sv_min_bitrate  = 320000
 sv_target_dir   = None
 sv_source_dir   = None
 
