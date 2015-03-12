@@ -18,7 +18,7 @@ endfunction
 let s:MSYS_BASH  = 'C:/MinGW/msys/1.0/bin/bash.exe'
 "let s:MSYS_MAKE  = 'mingw32-make'
 
-let $BASH_ENV = expand('<sfile>:p:h') . '/myBASHRC'
+let $BASH_ENV = expand('<sfile>:p:h') . '/bashenv'
 
 let &shell=s:MSYS_BASH
 set shellcmdflag=-c
