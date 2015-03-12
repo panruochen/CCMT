@@ -159,6 +159,16 @@ class MediaProbeMutagen(MediaProbe) :
 
         return media
 
+def should_move(s, d) :
+    if not os.path.exists(d) :
+        return True
+    try :
+        if os.stat(s).st_size > os.stat(d).st_size :
+            return True
+    except:
+        pass
+    return False
+
 #===========================================================================
 # Main
 #===========================================================================
@@ -210,7 +220,10 @@ print("%u media files reclaimed from %u cached files\n" % (len(medialist),count)
 tr_table = { ord('"') : ' ', ord("'"):' ', ord('/'):' ', ord('\\'):' ', ord(':'):' ' };
 for media in medialist :
     if media.duration >= sv_min_duration and media.bitrate >= sv_min_bitrate : #and media.title is not None :
-        print("Move %s to %s" % (media.name, sv_target_dir))
-        media.dump()
-#        pass
-        shutil.move(media.name, sv_target_dir + '/' + media.title.string.translate(tr_table) + '.' + media.type)
+        target_name = sv_target_dir + '/' + media.title.string.translate(tr_table) + '.' + media.type
+        if should_move(media.name, target_name) :
+            print("Move %s to %s" % (media.name, sv_target_dir))
+            media.dump()
+            shutil.move(media.name, target_name)
+        else :
+            print("Target file \"%s\" exists." % target_name)
