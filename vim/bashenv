@@ -1,10 +1,6 @@
 #!/bin/bash
-MSYS_RD="C:/MinGW/msys/1.0"
 HOME="C:/MinGW/msys/1.0/home/$USERNAME"
-
 source /etc/profile
-
-if [ -e $HOME/.profile ]; then
-	source $HOME/.profile
+if [ -e $HOME/.profille ]; then
+    source $HOME/.profile
 fi
-
