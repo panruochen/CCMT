@@ -72,10 +72,6 @@ endif
 set laststatus=2
 set statusline=%F\ %m%r%h\ %w\ \ Line:\ %l/%L:%c
 
-"
-" Auto commands
-"
-autocmd BufEnter *.c,*.h,*.cpp,*.hpp,*.cc,*.cxx,*.S,*.s set noexpandtab
 
 "execute pathogen#infect()
 
@@ -83,6 +79,12 @@ syntax on
 filetype on
 filetype plugin on
 filetype indent on
+
+"
+" Auto commands
+"
+autocmd BufEnter *.c,*.h,*.cpp,*.hpp,*.cc,*.cxx,*.S,*.s set noexpandtab
+autocmd BufEnter *.py set expandtab
 
 if exists("tags")
 	set tag=tags
@@ -108,8 +110,6 @@ autocmd FileType xml,htm,html set mps+=<:>
 " Maximize the windows if gvim is running
 autocmd GUIEnter * simalt ~x
 
-
-autocmd BufEnter *.c,*.h,*.cpp,*.hpp,*.cc,*.cxx,*.S,*.s set noexpandtab
 
 " Show tabs
 if v:progname != "vimdiff"
