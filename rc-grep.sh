@@ -6,10 +6,10 @@
 #========================================================
 #set -e -o pipefail
 
-usage_and_exit(xc)
+usage_and_exit()
 {
 	echo "Usage: $(basename $0) [-e PATTERN1] [-e PATTERN2] [-l] [-i] FILES1 FILES2..." >&2
-	exit(xc)
+	exit $1
 }
 
 has_patterns=
@@ -29,7 +29,7 @@ do
 			grep_options+=("-i")
         ;;
     *)
-		usage_and_exit(0)
+		usage_and_exit 0
         ;;
     esac
 done
@@ -46,7 +46,7 @@ do
 done
 
 if [ ${#find_options[@]} -eq 0 -o -z "$has_patterns" ]; then
-	usage_and_exit(0)
+	usage_and_exit 0
 fi
 
 set +e
