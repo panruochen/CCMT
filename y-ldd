@@ -17,7 +17,6 @@ import sys, os, glob, stat
 import shutil
 import ConfigParser, optparse
 import subprocess
-from string import maketrans
 
 
 def get_file_path(searchpaths, file) :
@@ -30,8 +29,8 @@ def get_file_path(searchpaths, file) :
     return None
 
 def get_dependencies(searchpaths, basefile, fileset) :
-    global sys_readelf
-    commands = [sys_readelf, '-d', basefile]
+    global gnu_readelf
+    commands = [gnu_readelf, '-d', basefile]
     proc = subprocess.Popen(commands, stdout=subprocess.PIPE)
     results = []
 
@@ -77,10 +76,18 @@ def which(program) :
         return spawn.find_executable(program)
     else :
         # print [ os.access(os.path.join(path, 'ntoarmv7-' + 'readelf'),os.X_OK) for path in os.environ["PATH"].split(os.pathsep)]
-        # any(os.access(os.path.join(path, prefix + 'readelf'), os.X_OK) for path in os.environ["PATH"].split(os.pathsep))
-        pass
+        for path in os.environ["PATH"].split(os.pathsep) :
+            path = os.path.join(path, program)
+            if os.access(path, os.X_OK) :
+                return path
+    return ""
 
-sys_readelf = None
+
+#===============#
+#    main
+#===============#
+
+gnu_readelf = None
 
 # create the options parser
 optionsparser = optparse.OptionParser()
@@ -96,19 +103,18 @@ optionsparser.add_option("-s", "--searchpath", action='append', help="specify th
 for prefix in [options.prefix, ''] :
     x = which(prefix + 'readelf')
     if x :
-        sys_readelf = x
+        gnu_readelf = x
         break
 
-if sys_readelf is None :
+if gnu_readelf is None :
     print >>sys.stderr, "Can not find %sreadelf utility" % options.prefix
     exit(1)
 
-searchpaths = options.searchpath
-print searchpaths
-print args
+#print options.searchpaths
+#print args
 #exit(0)
 for file in args :
-    deps = ldd(searchpaths, file)
+    deps = ldd(options.searchpaths, file)
     print file
     for i in deps :
         print '  ', i
