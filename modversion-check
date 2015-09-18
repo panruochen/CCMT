@@ -1,0 +1,239 @@
+#!/usr/bin/env python
+import os, sys, subprocess, collections, struct
+import optparse
+
+class Interval :
+    def __init__(self, start, size, sec) :
+        self.start = start
+        self.size  = size
+        self.sec   = sec
+
+class Section :
+    def __init__(self, name, size, vma, lma, fileoff) :
+        self.name = name
+        self.size = size
+        self.vma  = vma
+        self.lma  = lma
+        self.fileoff = fileoff
+
+class KernelSymbol :
+    def __init__(self, value, name, crc) :
+        self.value = value
+        self.name  = name
+        self.crc   = crc
+
+class ModVersionInfo :
+    def __init__(self, crc, name) :
+        self.crc  = crc
+        self.name = name
+
+class LoadInfo :
+    def __init__(self) :
+        self.sections  = collections.OrderedDict()
+        self.symbols   = collections.OrderedDict()
+        self.modversions = collections.OrderedDict()
+        self.va_ranges = []
+        self.fd = -1
+        self.raw_ksyms = []
+        self.raw_crcs  = []
+
+    @staticmethod
+    def interval_compare(x, y) :
+        if x.start + x.size <= y.start :
+            return -1
+        if y.start + y.size <= x.start :
+            return 1
+        return 0
+
+    @staticmethod
+    def binsearch(key, array) :
+        a = 0
+        b = len(array) - 1
+        while a <= b :
+            m = int((a + b) / 2)
+            elem = array[m]
+            if key < elem.start :
+                b = m - 1
+            elif key >= elem.start + elem.size :
+                a = m + 1
+            else :
+                return elem
+        return None
+
+    def va_to_fo(self, va) :
+        iv = self.binsearch(va, self.va_ranges)
+        if iv is None :
+            return None
+        return va - iv.start + iv.sec.fileoff
+
+    def open_elf(self, elf_image) :
+        cmd_args = ['objdump', '-h', elf_image]
+        sp = subprocess.Popen(cmd_args, stdout=subprocess.PIPE)
+        sp.wait()
+        if sp.returncode :
+            return False
+        for line in sp.stdout :
+            fx = line.split()
+            if len(fx) == 8 and fx[0] == 'Idx' and fx[2] == 'Size' and fx[4] == 'LMA':
+                break
+        first_half = True
+        for line in sp.stdout :
+            fx = line.rstrip('\n').replace(',', ' ').split()
+            if first_half :
+                sec = Section(fx[1], int(fx[2],16), int(fx[3],16), int(fx[4],16), int(fx[5],16))
+            else :
+                flags = 0
+                for i in fx :
+                    if i == 'LOAD' :
+                        flags |= 1
+                    elif i == 'DATA' :
+                        flags |= 2
+                if flags == 3 :
+                    self.sections[sec.name] = sec
+                    self.va_ranges.append(Interval(sec.vma, sec.size, sec))
+
+            first_half = not first_half
+            self.va_ranges.sort(self.interval_compare)
+
+        flags = os.O_RDONLY
+        self.fd = os.open(elf_image, flags)
+        if self.fd == -1 :
+            return False
+        return True
+
+    def loadstring(self, va) :
+        offset = self.va_to_fo(va)
+        os.lseek(self.fd, offset, os.SEEK_SET)
+        buf = b''
+        i = b'\x10'
+        while i != b'\x00' :
+            tmp = os.read(self.fd, 1024)
+            for i in tmp :
+                if i == b'\x00' :
+                    break
+                buf += i
+        return buf.decode('ascii')
+
+    def proc_kernel_symbol(self, buf) :
+        value, _name = struct.unpack('II', buf)
+        self.raw_ksyms.append((value,self.loadstring(_name)))
+
+    def proc_crc(self, buf) :
+        value, = struct.unpack('I', buf)
+        self.raw_crcs.append(value)
+
+    def proc_modversion(self, buf) :
+        crc, = struct.unpack('I', buf[0:4])
+        stop = 4
+        for c in buf[4:] :
+            if c == b'\x00' :
+                break
+            stop += 1
+        name = buf[4:stop]
+        self.modversions[name] = ModVersionInfo(crc,name)
+
+    def load_section(self, secname, entsize, cb) :
+        sec = self.sections[secname]
+        offset = sec.fileoff
+        end    = offset + sec.size
+        while offset < end :
+            os.lseek(self.fd, offset, os.SEEK_SET)
+            buf = os.read(self.fd, entsize)
+            cb(buf)
+            offset += entsize
+
+    def try_setup_kernel_symbols(self) :
+        if len(self.raw_ksyms) == len(self.raw_crcs) and len(self.raw_ksyms) > 0 and len(self.symbols) == 0:
+            i = 0
+            for value, name in self.raw_ksyms:
+                self.symbols[name] = KernelSymbol(value, name, self.raw_crcs[i])
+                i += 1
+            del self.raw_ksyms[:]
+            del self.raw_crcs[:]
+
+    def load_sym_section(self, secname) :
+        self.load_section(secname, 8, self.proc_kernel_symbol)
+        self.try_setup_kernel_symbols()
+
+    def load_crc_section(self, secname) :
+        self.load_section(secname, 4, self.proc_crc)
+        self.try_setup_kernel_symbols()
+
+    def load_mod_section(self, secname) :
+        self.load_section(secname, 64, self.proc_modversion)
+
+    def dump_sections(self) :
+        for name in self.sections :
+            s = self.sections[name]
+            print "%-32s %08x %08x %08x %08x" % (name, s.size, s.vma, s.lma, s.fileoff)
+
+    def dump_modversions(self) :
+        for name in self.modversions :
+            mv = self.modversions[name]
+            print "%08x  %s" % (mv.crc, mv.name)
+
+    def dump_symbols(self) :
+        for name in self.symbols :
+            ks = self.symbols[name]
+            print "%08x %08x %s" % (ks.value, ks.crc, ks.name)
+
+#--------------------------------------------------------------------
+#  main()
+#--------------------------------------------------------------------
+
+oparser = optparse.OptionParser()
+
+oparser.add_option("-k", '', action='store', dest='vmlinux', help="The path for vmlinux", default=None)
+oparser.add_option("-m", '', action='append', dest='modules', help="The path for modules", default=[])
+oparser.add_option("-s", '', action='append', dest='symbols', help="The symbol name to verify", default=[])
+
+(options, args) = oparser.parse_args()
+
+vml_module = LoadInfo()
+modules = {}
+
+if options.vmlinux is not None :
+    if not vml_module.open_elf(options.vmlinux) :
+        exit(1)
+    vml_module.load_sym_section('__ksymtab_gpl')
+    vml_module.load_crc_section('__kcrctab_gpl')
+
+for mod in options.modules :
+    loadinfo = LoadInfo()
+    if not loadinfo.open_elf(mod) :
+        exit(1)
+#    mod_loadinfo.dump_sections()
+    loadinfo.load_mod_section('__versions')
+#    loadinfo.dump_modversions()
+    modules[mod] = loadinfo
+
+
+unres_symbols1 = set()
+unres_symbols2 = set()
+for sym in options.symbols :
+    unres_symbols1.add(sym)
+    unres_symbols2.add(sym)
+
+error_messages = ''
+
+for sym in options.symbols :
+    if sym not in vml_module.symbols :
+        continue
+    unres_symbols1.remove(sym)
+    for module in modules.values() :
+        if sym not in module.modversions :
+            continue
+        mv = module.modversions[sym]
+        ks = vml_module.symbols[sym]
+        unres_symbols2.remove(sym)
+        if ks.crc != mv.crc :
+            error_messages += "CRC mismatch: %08x(%s) %08x(%s)\n" % (ks.crc, sym, mv.crc, sym)
+
+if len(unres_symbols1) :
+    error_messages += "%s not found in %s\n" % (' '.join([x for x in unres_symbols1]), options.vmlinux)
+if len(unres_symbols2) :
+    error_messages += "%s not found in modules\n" % ' '.join([x for x in unres_symbols2])
+
+if error_messages :
+    sys.stderr.write(error_messages)
+    exit(1)
