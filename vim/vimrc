@@ -101,7 +101,7 @@ autocmd BufReadPost *
   \   exec "normal! g`\"" |
   \ endif
 
-autocmd BufWritePre *  if &modified | let l = line(".") | let c = col(".") | %s/\s\+$//e | call cursor(l, c) | endif
+autocmd BufWritePre *  if &modified && expand("%:e") != "md" | let l = line(".") | let c = col(".") | %s/\s\+$//e | call cursor(l, c) | endif
 
 autocmd FileType xml,htm,html set mps+=<:>
 
