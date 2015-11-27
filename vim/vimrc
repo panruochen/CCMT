@@ -167,7 +167,64 @@ endfunction
 
 noremap  <Leader>t4  :call <SID>SwitchTabStop(4)<CR>
 noremap  <Leader>t8  :call <SID>SwitchTabStop(8)<CR>
+" Comment the selected line
 nnoremap <Leader>tc  :s/^\(\s*\)\([^#]\)/\1#\2/<CR>:let @/=''<CR>
+
+hi ContTabs ctermbg=yellow guibg=yellow
+
+let s:whites_visible = 0
+
+function <SID>nToggleWhites(pattern)
+	if @/ != a:pattern
+		let s:whites_visible = 1
+	else
+		let s:whites_visible = ! s:whites_visible
+	endif
+	if s:whites_visible
+		exec 'normal! /' . a:pattern . "/\<CR>"
+		let @/ = a:pattern
+	else
+		let @/ = ''
+	endif
+	return @/
+endfunction
+
+noremap  <Leader>vt   :let @/=<SID>nToggleWhites('^\t\+')<CR>:set hls<CR>
+noremap  <Leader>vta  :let @/=<SID>nToggleWhites('\t\+')<CR>:set hls<CR>
+noremap  <Leader>vs   :let @/=<SID>nToggleWhites('^ \+')<CR>:set hls<CR>
+
+function <SID>ConvertLeadingSpacesToTabs(nr)
+	let old_line = getline(a:nr)
+	let new_line = ''
+	let j = 1
+	let col = 0
+	let boundary = &tabstop
+	while 1
+		let c = strpart(old_line, j, 1)
+		if c != "\t" | let col += 1 | endif
+		if col == boundary || c == "\t"
+			let new_line .= "\t" | let col = boundary | let boundary += &tabstop
+		endif
+		if c != "\t" && c != " " | break | endif
+		let j += 1
+	endwhile
+	if new_line !=# strpart(old_line, 1, j - 1)
+		let new_line .= strpart(old_line, j)
+		call setline(a:nr, new_line)
+	endif
+endfunction
+
+function <SID>vLeadingSpacesToTabs() range
+	let i = a:firstline
+	while i <= a:lastline
+		call <SID>ConvertLeadingSpacesToTabs(i)
+		let i += 1
+	endwhile
+endfunction
+
+vnoremap <Leader><tab>  :call <SID>vLeadingSpacesToTabs()<CR>
+nnoremap <Leader><tab>  :call <SID>ConvertLeadingSpacesToTabs(line('.'))<CR>
+
 
 " Use <TAB> key to switch between windows in NORMAL MODE
 nnoremap <TAB> <C-W>W
