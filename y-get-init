@@ -1,0 +1,73 @@
+#!/usr/bin/python
+
+_____________________________ = '''
+This script help find out initialization sequences of all built-in device drivers.
+'''
+
+_____________________________ = '''
+
+                     _     _     _    _              _____              _____                  _
+                    | |   | |   | |  | |            |  __ \            |  __ \                | |
+  _ __  _   _ ______| | __| | __| |  | |__  _   _   | |__) |_ _ _ __   | |__) |   _  ___   ___| |__   ___ _ __
+ | '_ \| | | |______| |/ _` |/ _` |  | '_ \| | | |  |  ___/ _` | '_ \  |  _  / | | |/ _ \ / __| '_ \ / _ \ '_ \
+ | |_) | |_| |      | | (_| | (_| |  | |_) | |_| |  | |  | (_| | | | |_| | \ \ |_| | (_) | (__| | | |  __/ | | |
+ | .__/ \__, |      |_|\__,_|\__,_|  |_.__/ \__, |  |_|   \__,_|_| |_(_)_|  \_\__,_|\___/ \___|_| |_|\___|_| |_|
+ | |     __/ |                               __/ |
+ |_|    |___/                               |___/
+
+'''
+
+import sys, os, glob, stat
+import shutil
+import ConfigParser, optparse
+import subprocess
+
+def get_initcall_addr(objdump, vmlinux, sysmap) :
+
+    symbols = dict()
+    fd = open(sysmap, "r")
+    for line in fd :
+        a = line.split()
+        if len(a) >= 3 and (a[1] == 'T' or a[1] == 't') :
+            symbols[a[0]] = a[2]
+
+    commands = [objdump, '-d', '-j', '.init.data', vmlinux]
+    proc = subprocess.Popen(commands, stdout=subprocess.PIPE)
+    go = False
+
+    out, err = proc.communicate()
+    if proc.returncode != 0 :
+        print >>sys.stderr, "Error on executing " + ' '.join(commands)
+        exit(1)
+    for line in out.split('\n') :
+        a = line.split()
+        if not go and len(a) >= 2 and a[1] == "<__initcall6_start>:" :
+            go = True
+            count = 1
+            continue
+        if go and len(a) >= 2:
+            if a[1] == "<__initcall7_start>:" :
+                break
+            elif count % 2 == 1 :
+                addr = a[1]
+                if addr in symbols :
+                    print "%s  %s" % (addr, symbols[addr])
+                else :
+                    print "Get addr %s" % addr
+            count += 1
+
+#===============#
+#    main
+#===============#
+# create the options parser
+optionsparser = optparse.OptionParser()
+
+# define the options we require/support
+optionsparser.add_option("-O", "--objdump", help="Specify objdump utility", default='arm-eabi-objdump')
+optionsparser.add_option("-S", "--sysmap",  help="specify System.map file", default='System.map')
+optionsparser.add_option("-V", "--vmlinux", help="specify vmlinux file", default='vmlinux')
+
+# parse the options
+(options, args) = optionsparser.parse_args()
+
+get_initcall_addr(options.objdump, options.vmlinux, options.sysmap)
