@@ -37,6 +37,21 @@ done
 shift $((OPTIND-1))
 ##echo "$@" ; exit
 
+if [ -z "$has_patterns" ]; then
+	if [ -z "$1" ]; then
+        show_usage_and_exit 1
+	fi
+	grep_options+=("-e" "$1")
+    has_patterns=y
+	shift 1
+fi
+
+if [ -z "$find_options" ]; then
+	find_options+=("-name" "${1:-*}")
+fi
+
+#echo "${grep_options[*]}"
+#echo "${find_options[*]}"
 
 for a in "$@"
 do
