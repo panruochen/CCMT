@@ -13,7 +13,7 @@ if !has("gui_running") && v:progname == "vim"
     exec "set fileencoding=" . lang
     exec "language messages " . $LANG
     exec "set termencoding=" . lang
-	unlet lang
+    unlet lang
   endif
 endif
 
@@ -34,8 +34,6 @@ if v:progname =~? 'gVIM'
     exec 'source ' . expand('<sfile>:p:h') . '/bash_config.vim'
   endif
 endif
-
-
 
 set autoindent cindent nobackup hlsearch nocompatible noerrorbells
 
@@ -85,7 +83,7 @@ autocmd BufEnter *.c,*.h,*.cpp,*.hpp,*.cc,*.cxx,*.S,*.s set noexpandtab
 autocmd BufEnter *.py set expandtab tabstop=4
 
 if exists("tags")
-	set tag=tags
+    set tag=tags
 endif
 
 " Go to last file if invoked without arguments.
@@ -125,22 +123,22 @@ nnoremap <C-F4>  :xall<CR>
 
 " Remove spaces of one tabstop
 function <SID>vRemoveSpacesOfTab() range
-	exec a:firstline . "," . a:lastline . 's/^\( \{' . &tabstop . '\}\|\t\)//e'
-	let @/ = ''
+    exec a:firstline . "," . a:lastline . 's/^\( \{' . &tabstop . '\}\|\t\)//e'
+    let @/ = ''
 endfunction
 function <SID>vInsertSpacesOfTab() range
-	if &expandtab
-		let spaces = ''
-		let i = 0
-		while i < &tabstop
-			let spaces .= ' '
-			let i += 1
-		endwhile
-	else
-		let spaces = '\t'
-	endif
-	exec a:firstline . "," . a:lastline . 's/^/'  . spaces . '/'
-	let @/ = ''
+    if &expandtab
+        let spaces = ''
+        let i = 0
+        while i < &tabstop
+            let spaces .= ' '
+            let i += 1
+        endwhile
+    else
+        let spaces = '\t'
+    endif
+    exec a:firstline . "," . a:lastline . 's/^/'  . spaces . '/'
+    let @/ = ''
 endfunction
 
 " Insert/Remove a `tab' of spaces (in visual mode)
@@ -160,9 +158,9 @@ let NERDTreeShowBookmarks = 1
 let NERDTreeStatusline = -1
 
 function <SID>SwitchTabStop(ts)
-	let &tabstop     = a:ts
-	let &softtabstop = a:ts
-	let &shiftwidth  = a:ts
+    let &tabstop     = a:ts
+    let &softtabstop = a:ts
+    let &shiftwidth  = a:ts
 endfunction
 
 noremap  <Leader>t4  :call <SID>SwitchTabStop(4)<CR>
@@ -175,18 +173,18 @@ hi ContTabs ctermbg=yellow guibg=yellow
 let s:whites_visible = 0
 
 function <SID>nToggleWhites(pattern)
-	if @/ != a:pattern
-		let s:whites_visible = 1
-	else
-		let s:whites_visible = ! s:whites_visible
-	endif
-	if s:whites_visible
-		exec 'normal! /' . a:pattern . "/\<CR>"
-		let @/ = a:pattern
-	else
-		let @/ = ''
-	endif
-	return @/
+    if @/ != a:pattern
+        let s:whites_visible = 1
+    else
+        let s:whites_visible = ! s:whites_visible
+    endif
+    if s:whites_visible
+        exec 'normal! /' . a:pattern . "/\<CR>"
+        let @/ = a:pattern
+    else
+        let @/ = ''
+    endif
+    return @/
 endfunction
 
 noremap  <Leader>vt   :let @/=<SID>nToggleWhites('^\t\+')<CR>:set hls<CR>
@@ -194,32 +192,32 @@ noremap  <Leader>vta  :let @/=<SID>nToggleWhites('\t\+')<CR>:set hls<CR>
 noremap  <Leader>vs   :let @/=<SID>nToggleWhites('^ \+')<CR>:set hls<CR>
 
 function <SID>ConvertLeadingSpacesToTabs(nr)
-	let old_line = getline(a:nr)
-	let new_line = ''
-	let j = 1
-	let col = 0
-	let boundary = &tabstop
-	while 1
-		let c = strpart(old_line, j, 1)
-		if c != "\t" | let col += 1 | endif
-		if col == boundary || c == "\t"
-			let new_line .= "\t" | let col = boundary | let boundary += &tabstop
-		endif
-		if c != "\t" && c != " " | break | endif
-		let j += 1
-	endwhile
-	if new_line !=# strpart(old_line, 1, j - 1)
-		let new_line .= strpart(old_line, j)
-		call setline(a:nr, new_line)
-	endif
+    let old_line = getline(a:nr)
+    let new_line = ''
+    let j = 1
+    let col = 0
+    let boundary = &tabstop
+    while 1
+        let c = strpart(old_line, j, 1)
+        if c != "\t" | let col += 1 | endif
+        if col == boundary || c == "\t"
+            let new_line .= "\t" | let col = boundary | let boundary += &tabstop
+        endif
+        if c != "\t" && c != " " | break | endif
+        let j += 1
+    endwhile
+    if new_line !=# strpart(old_line, 1, j - 1)
+        let new_line .= strpart(old_line, j)
+        call setline(a:nr, new_line)
+    endif
 endfunction
 
 function <SID>vLeadingSpacesToTabs() range
-	let i = a:firstline
-	while i <= a:lastline
-		call <SID>ConvertLeadingSpacesToTabs(i)
-		let i += 1
-	endwhile
+    let i = a:firstline
+    while i <= a:lastline
+        call <SID>ConvertLeadingSpacesToTabs(i)
+        let i += 1
+    endwhile
 endfunction
 
 vnoremap <Leader><tab>  :call <SID>vLeadingSpacesToTabs()<CR>
@@ -251,4 +249,9 @@ set backspace=indent,eol,start
 hi LineNr guifg=purple gui=underline
 hi LineNr ctermfg=Magenta cterm=underline
 
+" Apply local configurations for the project
+let local_vimrc = findfile("local.vimrc", ".;")
+if !empty(local_vimrc) && filereadable(local_vimrc)
+    silent! exec "source " . local_vimrc
+endif
 
