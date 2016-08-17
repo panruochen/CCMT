@@ -127,7 +127,7 @@ function <SID>vRemoveSpacesOfTab() range
     let @/ = ''
 endfunction
 function <SID>vInsertSpacesOfTab() range
-    if &expandtab
+    if &g:expandtab
         let spaces = ''
         let i = 0
         while i < &tabstop
@@ -191,36 +191,9 @@ noremap  <Leader>vt   :let @/=<SID>nToggleWhites('^\t\+')<CR>:set hls<CR>
 noremap  <Leader>vta  :let @/=<SID>nToggleWhites('\t\+')<CR>:set hls<CR>
 noremap  <Leader>vs   :let @/=<SID>nToggleWhites('^ \+')<CR>:set hls<CR>
 
-function <SID>ConvertLeadingSpacesToTabs(nr)
-    let old_line = getline(a:nr)
-    let new_line = ''
-    let j = 1
-    let col = 0
-    let boundary = &tabstop
-    while 1
-        let c = strpart(old_line, j, 1)
-        if c != "\t" | let col += 1 | endif
-        if col == boundary || c == "\t"
-            let new_line .= "\t" | let col = boundary | let boundary += &tabstop
-        endif
-        if c != "\t" && c != " " | break | endif
-        let j += 1
-    endwhile
-    if new_line !=# strpart(old_line, 1, j - 1)
-        let new_line .= strpart(old_line, j)
-        call setline(a:nr, new_line)
-    endif
-endfunction
-
-function <SID>vLeadingSpacesToTabs() range
-    let i = a:firstline
-    while i <= a:lastline
-        call <SID>ConvertLeadingSpacesToTabs(i)
-        let i += 1
-    endwhile
-endfunction
-
-function <SID>CountExpandedLength(line, start)
+" Find next word from the start postition and return the position
+" of that word by expanding tabs to spaces.
+function <SID>GetNextWordPosition(line, start)
 	let col = 0
 	let spaces = 0
 	let i = a:start
@@ -243,7 +216,7 @@ function <SID>GetColumnPositions(line)
 	let x = 0
 	let pos = []
 	while x < len(a:line)
-		let i = <SID>CountExpandedLength(a:line, x)
+		let i = <SID>GetNextWordPosition(a:line, x)
 		call add(pos, i)
 
 		while x < len(a:line)
@@ -280,14 +253,29 @@ function <SID>vAlignColumns() range
     endwhile
 endfunction
 
+"""nnoremap <F9> :call <SID>GetNextWordPosition(getline("."),0)<CR>
+"""nnoremap <F9> :echo <SID>GetColumnPositions(getline("."))<CR>
 
-vnoremap <Leader><tab>  :call <SID>vLeadingSpacesToTabs()<CR>
-nnoremap <Leader><tab>  :call ConvertLeadingSpacesToTabs(line('.'))<CR>
+" Align fields of selected lines based on the first line
+vnoremap <Leader>a :call <SID>vAlignColumns()<CR>
 
-"nnoremap <F9> :call <SID>CountExpandedLength(getline("."),0)<CR>
-"nnoremap <F9> :echo <SID>GetColumnPositions(getline("."))<CR>
-vnoremap <F9> :call <SID>vAlignColumns()<CR>
+function <SID>vConvertTabsOrSpaces(toSpace) range
+	let &l:et = a:toSpace
+	retab!
+endfunction
 
+" Convert tabs to spaces within selected range
+vnoremap <Leader>et  :call <SID>vConvertTabsOrSpaces(0)<CR>
+" Convert spaces to tabs within selected range
+vnoremap <Leader>es  :call <SID>vConvertTabsOrSpaces(1)<CR>
+
+" Convert tabs to spaces within the entire file
+nnoremap %et  :% call <SID>vConvertTabsOrSpaces(0)<CR>
+" Convert spaces to tabs within the entire file
+nnoremap %es  :% call <SID>vConvertTabsOrSpaces(1)<CR>
+
+"nnoremap <Leader>et  :call <SID>nConvertTabsOrSpaces(0)<CR>
+"nnoremap <Leader>es  :call <SID>nConvertTabsOrSpaces(1)<CR>
 
 " Use <TAB> key to switch between windows in NORMAL MODE
 nnoremap <TAB> <C-W>W
