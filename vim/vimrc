@@ -220,8 +220,73 @@ function <SID>vLeadingSpacesToTabs() range
     endwhile
 endfunction
 
+function <SID>CountExpandedLength(line, start)
+	let col = 0
+	let spaces = 0
+	let i = a:start
+    while 1
+        let c = strpart(a:line, i, 1)
+		let i += 1
+        if c == "\t"
+  			let col = (((col + 1) / &tabstop + 1) * &tabstop) - 1 | let spaces = 0
+		elseif c == " "
+			if spaces == &tabstop | let col += &tabstop | let spaces = 0 | else | let spaces += 1 | endif
+		else
+			break
+        endif
+    endwhile
+	let col += spaces
+	return col + a:start
+endfunction
+
+function <SID>GetColumnPositions(line)
+	let x = 0
+	let pos = []
+	while x < len(a:line)
+		let i = <SID>CountExpandedLength(a:line, x)
+		call add(pos, i)
+
+		while x < len(a:line)
+			let c = strpart(a:line, x, 1)
+			if c == "\t" || c == " " | let x += 1 | else | break | endif
+		endwhile
+		while x < len(a:line)
+			let c = strpart(a:line, x, 1)
+			if c != "\t" && c != " " | let x += 1 | else | break | endif
+		endwhile
+	endwhile
+	return pos
+endfunction
+
+function <SID>vAlignColumns() range
+    let y = a:firstline
+	let positions = <SID>GetColumnPositions(getline(y))
+    while y <= a:lastline
+		let newline = ""
+		let i = 0
+		let fields = split(getline(y))
+		while i < len(fields)
+			let x = strlen(newline) + 1
+			let newline .= " "
+			while x < positions[i]
+				let newline .= " "
+				let x += 1
+			endwhile
+			let newline .= fields[i]
+			let i += 1
+		endwhile
+		echo newline
+        let y += 1
+    endwhile
+endfunction
+
+
 vnoremap <Leader><tab>  :call <SID>vLeadingSpacesToTabs()<CR>
-nnoremap <Leader><tab>  :call <SID>ConvertLeadingSpacesToTabs(line('.'))<CR>
+nnoremap <Leader><tab>  :call ConvertLeadingSpacesToTabs(line('.'))<CR>
+
+"nnoremap <F9> :call <SID>CountExpandedLength(getline("."),0)<CR>
+"nnoremap <F9> :echo <SID>GetColumnPositions(getline("."))<CR>
+vnoremap <F9> :call <SID>vAlignColumns()<CR>
 
 
 " Use <TAB> key to switch between windows in NORMAL MODE
@@ -238,6 +303,7 @@ nnoremap <Leader>r   :registers<CR>
 
 "# Toggle line number
 nnoremap <Leader>]   :let &number = !&number<CR>
+nnoremap <Leader>[   :let &relativenumber = !&relativenumber<CR>
 
 "# Hide search highlighting
 nnoremap <Leader>\   :let @/ = ''<CR>
