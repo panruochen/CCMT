@@ -261,7 +261,9 @@ vnoremap <Leader>a :call <SID>vAlignColumns()<CR>
 
 function <SID>vConvertTabsOrSpaces(toSpace) range
 	let &l:et = a:toSpace
-	retab!
+"	echo a:firstline
+"	echo a:lastline
+	exec a:firstline . "," . a:lastline . "retab!"
 endfunction
 
 " Convert tabs to spaces within selected range
@@ -300,8 +302,14 @@ nnoremap <Leader>\   :let @/ = ''<CR>
 nnoremap K   kJ
 
 set backspace=indent,eol,start
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" High light configurations
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 hi LineNr guifg=purple gui=underline
 hi LineNr ctermfg=Magenta cterm=underline
+hi VertSplit guibg=fg guifg=fg                                                        |
+hi VertSplit ctermfg=fg ctermbg=fg
 
 " Apply local configurations for the project
 let local_vimrc = findfile("local.vimrc", ".;")
