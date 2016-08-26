@@ -6,43 +6,47 @@
 
 show_usage_and_exit()
 {
-    echo "Usage: $(basename $0) [-e PATTERN1] [-e PATTERN2] [-l] [-i] FILES1 FILES2..." >&2
-    exit $1
+	echo "Usage: $(basename $0) [-e PATTERN1] [-e PATTERN2] [-l] [-i] FILES1 FILES2..." >&2
+	exit $1
 }
 
 has_patterns=
 grep_options=()
 find_options=()
-while getopts ":e:liI" o ;
+target_dirs=()
+while getopts ":e:liId:c:" o ;
 do
-    case "${o}" in
-    e)
-        grep_options+=("-e" "${OPTARG}")
-        has_patterns=y
-        ;;
-    l)
-        grep_options+=("-l")
-        ;;
-    i)
-        grep_options+=("-i")
-        ;;
+	case "${o}" in
+	e)
+		grep_options+=("-e" "${OPTARG}")
+		has_patterns=y
+		;;
+	l)
+		grep_options+=("-l")
+		;;
+	i)
+		grep_options+=("-i")
+		;;
 	I)
-        grep_options+=("-I") ## --binary-files=without-match
-        ;;
-    *)
-        show_usage_and_exit 0
-        ;;
-    esac
+		grep_options+=("-I") ## --binary-files=without-match
+		;;
+	d)
+		target_dirs+=("${OPTARG}")
+		;;
+	*)
+		show_usage_and_exit 0
+		;;
+	esac
 done
 shift $((OPTIND-1))
 ##echo "$@" ; exit
 
 if [ -z "$has_patterns" ]; then
 	if [ -z "$1" ]; then
-        show_usage_and_exit 1
+		show_usage_and_exit 1
 	fi
 	grep_options+=("-e" "$1")
-    has_patterns=y
+	has_patterns=y
 	shift 1
 fi
 
@@ -55,16 +59,23 @@ fi
 
 for a in "$@"
 do
-    if [ -n "$find_options" ]; then
-        find_options+=("-o")
-    fi
-    find_options+=("-name" "$a")
+	if [ -n "$find_options" ]; then
+		find_options+=("-o")
+	fi
+	find_options+=("-name" "$a")
 done
 
 if [ ${#find_options[@]} -eq 0 -o -z "$has_patterns" ]; then
-    show_usage_and_exit 0
+	show_usage_and_exit 0
+fi
+
+if [ ${#target_dirs[*]} -eq 0 ]; then
+	target_dirs+=('')
 fi
 
 set +e
-find \( -type f -a \( "${find_options[@]}" \) \) -print0| xargs -0 grep "${grep_options[@]}"
+for d in "${target_dirs[@]}"
+do
+	find $d \( -type f -a \( "${find_options[@]}" \) \) -print0| xargs -0 grep "${grep_options[@]}"
+done
 
