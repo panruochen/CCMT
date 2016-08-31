@@ -40,7 +40,6 @@ set showmode ruler
 set shortmess=a
 set cmdheight=2
 
-"execute pathogen#infect()
 syntax on
 filetype plugin indent on
 
@@ -70,7 +69,6 @@ endif
 "set statusline=\ %F%m%r%h\ %w\ \ CWD:\ %r%{CurDir()}%h\ \ \ Line:\ %l/%L:%c
 set laststatus=2
 set statusline=%F\ %m%r%h\ %w\ \ Line:\ %l/%L:%c
-
 
 "
 " Auto commands

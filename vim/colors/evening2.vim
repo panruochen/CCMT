@@ -13,7 +13,7 @@ endif
 
 let colors_name = "evening2"
 
-hi Normal ctermbg=0 guibg=Black
+hi Normal ctermbg=0 ctermfg=15 guibg=#000000 guifg=White
 
 " Groups used in the 'highlight' and 'guicursor' options default value.
 hi ErrorMsg term=standout ctermbg=DarkRed ctermfg=White guibg=Red guifg=White
@@ -46,10 +46,10 @@ hi CursorColumn term=reverse ctermbg=Black guibg=grey40
 hi CursorLine term=underline cterm=underline guibg=grey40
 
 " Groups for syntax highlighting
-hi Constant term=underline ctermfg=Magenta guifg=Magenta guibg=grey5
-hi Special term=bold ctermfg=LightRed guifg=LightRed guibg=grey5
+hi Constant term=underline ctermfg=Magenta guifg=Magenta
+hi Special term=bold ctermfg=LightRed guifg=LightRed
 if &t_Co > 8
-  hi Statement term=bold cterm=bold ctermfg=Yellow guifg=#ffff60 gui=bold
+  hi Statement term=bold cterm=bold ctermfg=Yellow guifg=Yellow gui=bold
 endif
 hi Ignore ctermfg=DarkGrey guifg=grey20
 hi Comment ctermfg=DarkGreen guifg=DarkGreen
