@@ -19,13 +19,9 @@ endif
 
 set fileencodings=utf-8,ucs-bom,cp936
 
-if $TERM == "xterm"
-  colorscheme evening
-endif
 
 exec 'set runtimepath+=' . expand('<sfile>:p:h')
 if v:progname =~? 'gVIM'
-  colorscheme murphy
   set guifont=Consolas:h14
   set guioptions-=m  "remove menu bar
   set guioptions-=T  "remove toolbar
@@ -306,10 +302,11 @@ set backspace=indent,eol,start
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " High light configurations
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+colorscheme evening2
+
 hi LineNr guifg=purple gui=underline
 hi LineNr ctermfg=Magenta cterm=underline
-hi VertSplit guibg=fg guifg=fg                                                        |
-hi VertSplit ctermfg=fg ctermbg=fg
+hi VertSplit ctermfg=DarkGrey ctermbg=DarkGrey guibg=fg guifg=fg                                                        |
 
 " Apply local configurations for the project
 let local_vimrc = findfile("local.vimrc", ".;")
