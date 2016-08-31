@@ -19,13 +19,9 @@ endif
 
 set fileencodings=utf-8,ucs-bom,cp936
 
-if $TERM == "xterm"
-  colorscheme evening
-endif
 
 exec 'set runtimepath+=' . expand('<sfile>:p:h')
 if v:progname =~? 'gVIM'
-  colorscheme murphy
   set guifont=Consolas:h14
   set guioptions-=m  "remove menu bar
   set guioptions-=T  "remove toolbar
@@ -168,8 +164,6 @@ noremap  <Leader>t8  :call <SID>SwitchTabStop(8)<CR>
 " Comment the selected line
 nnoremap <Leader>tc  :s/^\(\s*\)\([^#]\)/\1#\2/<CR>:let @/=''<CR>
 
-hi ContTabs ctermbg=yellow guibg=yellow
-
 let s:whites_visible = 0
 
 function <SID>nToggleWhites(pattern)
@@ -292,8 +286,8 @@ vnoremap <Leader>S   y:/\<<C-r>"\>//g<Left><Left>
 nnoremap <Leader>r   :registers<CR>
 
 "# Toggle line number
-nnoremap <Leader>]   :let &number = !&number<CR>
-nnoremap <Leader>[   :let &relativenumber = !&relativenumber<CR>
+nnoremap <Leader>]   :let &number=!&number <bar> let &relativenumber=0 <CR>
+nnoremap <Leader>[   :let &relativenumber=!&relativenumber <bar> let &number=0 <CR>
 
 "# Hide search highlighting
 nnoremap <Leader>\   :let @/ = ''<CR>
@@ -301,15 +295,22 @@ nnoremap <Leader>\   :let @/ = ''<CR>
 "# Join two lines
 nnoremap K   kJ
 
+nnoremap <Leader>p0 :set nopaste<cr>
+nnoremap <Leader>p1 :set paste<cr>
+nnoremap <Leader>u  viwu
+nnoremap <Leader>U  viwU
+
 set backspace=indent,eol,start
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " High light configurations
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-hi LineNr guifg=purple gui=underline
-hi LineNr ctermfg=Magenta cterm=underline
-hi VertSplit guibg=fg guifg=fg                                                        |
-hi VertSplit ctermfg=fg ctermbg=fg
+colorscheme evening2
+
+"hi ContTabs ctermbg=yellow guibg=yellow
+"hi LineNr guifg=purple gui=underline
+"hi LineNr ctermfg=Magenta cterm=underline
+"hi VertSplit ctermfg=DarkGrey ctermbg=DarkGrey guibg=fg guifg=fg                                                        |
 
 " Apply local configurations for the project
 let local_vimrc = findfile("local.vimrc", ".;")
