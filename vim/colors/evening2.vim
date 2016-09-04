@@ -52,6 +52,6 @@ if &t_Co > 8
   hi Statement term=bold cterm=bold ctermfg=Yellow guifg=Yellow gui=bold
 endif
 hi Ignore ctermfg=DarkGrey guifg=grey20
-hi Comment ctermfg=DarkGreen guifg=DarkGreen
+hi Comment ctermfg=Green guifg=Green
 
 " vim: sw=2
