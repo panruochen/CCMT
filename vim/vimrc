@@ -116,11 +116,11 @@ inoremap <C-F4>  <ESC>:xall<CR>
 nnoremap <C-F4>  :xall<CR>
 
 " Remove spaces of one tabstop
-function <SID>vRemoveSpacesOfTab() range
+function! <SID>vRemoveSpacesOfTab() range
     exec a:firstline . "," . a:lastline . 's/^\( \{' . &tabstop . '\}\|\t\)//e'
     let @/ = ''
 endfunction
-function <SID>vInsertSpacesOfTab() range
+function! <SID>vInsertSpacesOfTab() range
     if &g:expandtab
         let spaces = ''
         let i = 0
@@ -151,7 +151,7 @@ let NERDTreeBookmarksFile = "~/.NERDTreeBookmarks"
 let NERDTreeShowBookmarks = 1
 let NERDTreeStatusline = -1
 
-function <SID>SwitchTabStop(ts)
+function! <SID>SwitchTabStop(ts)
     let &tabstop     = a:ts
     let &softtabstop = a:ts
     let &shiftwidth  = a:ts
@@ -164,7 +164,7 @@ nnoremap <Leader>tc  :s/^\(\s*\)\([^#]\)/\1#\2/<CR>:let @/=''<CR>
 
 let s:whites_visible = 0
 
-function <SID>nToggleWhites(pattern)
+function! <SID>nToggleWhites(pattern)
     if @/ != a:pattern
         let s:whites_visible = 1
     else
@@ -185,7 +185,7 @@ noremap  <Leader>vs   :let @/=<SID>nToggleWhites('^ \+')<CR>:set hls<CR>
 
 " Find next word from the start postition and return the position
 " of that word by expanding tabs to spaces.
-function <SID>GetNextWordPosition(line, start)
+function! <SID>GetNextWordPosition(line, start)
 	let col = 0
 	let spaces = 0
 	let i = a:start
@@ -204,7 +204,7 @@ function <SID>GetNextWordPosition(line, start)
 	return col + a:start
 endfunction
 
-function <SID>GetColumnPositions(line)
+function! <SID>GetColumnPositions(line)
 	let x = 0
 	let pos = []
 	while x < len(a:line)
@@ -223,7 +223,7 @@ function <SID>GetColumnPositions(line)
 	return pos
 endfunction
 
-function <SID>vAlignColumns() range
+function! <SID>vAlignColumns() range
     let y = a:firstline
 	let positions = <SID>GetColumnPositions(getline(y))
     while y <= a:lastline
@@ -251,7 +251,7 @@ endfunction
 " Align fields of selected lines based on the first line
 vnoremap <Leader>a :call <SID>vAlignColumns()<CR>
 
-function <SID>vConvertTabsOrSpaces(toSpace) range
+function! <SID>vConvertTabsOrSpaces(toSpace) range
 	let &l:et = a:toSpace
 "	echo a:firstline
 "	echo a:lastline
@@ -297,6 +297,21 @@ nnoremap <Leader>p0 :set nopaste<cr>
 nnoremap <Leader>p1 :set paste<cr>
 nnoremap <Leader>u  viwu
 nnoremap <Leader>U  viwU
+
+function! <SID>SelectMakeFunction(magic)
+	if a:magic == 0 | let c1 = '{' | let c2 = '}' |
+\	else | let c1 = '(' | let c2 = ')' | endif
+	let saved_pos = getpos('.')
+	let [y1, x1] = searchpairpos(c1, '', c2, 'b')
+	if x1 == 0 && y1 == 0 | call setpos(".", saved_pos) | return | endif
+	let [y0, x0] = searchpos('[$]\s*' . c1, 'bn', line('.'))
+	if x0 == 0 && y0 == 0 | call setpos(".", saved_pos) | return | endif
+	let s = 'normal %v[' . c1 . 'F$'
+	echo s | exec s
+endfunction
+
+autocmd FileType make noremap <F11> :call <SID>SelectMakeFunction(0)<CR> |
+\ noremap <F12> :call <SID>SelectMakeFunction(1)<CR>
 
 set backspace=indent,eol,start
 
