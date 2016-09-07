@@ -1,0 +1,364 @@
+######################################################################################################
+#
+# YUNZ MAKEFILE TEMPLATE
+#
+# The purpose of implementing this script is help quickly deploy source code
+# tree during initial phase of development. It is designed to manage one whole
+# project from within one single makefile and to be easily adapted to
+# different directory hierarchy by simply setting user configurable variables.
+# This script is expected to be used with gcc toolchains on bash-compatible
+# shell.
+#
+# Author:  Pan Ruochen <ijkxyz@msn.com>
+# History: 2012/10/10 -- The first version
+#          2016/9/4   -- Update
+#
+# You can get the latest version from here:
+# https://github.com/panruochen/yunz
+#
+######################################################################################################
+# User Defined Variables
+#
+# ====================================================================================================
+# GNU_TOOLCHAIN_PREFIX:   The perfix of gnu toolchain.
+# ====================================================================================================
+# CFLAGS:         Compiler flags.
+# INCS:           Header files include paths.
+# SRCS:           Sources. The entriess ending with a trailing / are taken as directories, the others
+#                 are taken as files. The files with specified extension names in those directories will
+#                 be automatically involved in compilation.
+# CFLAGS_xxx.y:   User-specified compiler flags for the xxx.y source file.
+#                 YUNZ will automatically add extra cflags for include directories and macro
+#                 definitions.
+# CFLAGS_OVERRIDE_xxx.y:
+#                 Overall compiler flags for the xxx.y source file. No any extra cflags will be
+#                 involved for compling this file.
+# MY_CFLAGS_*.y:  Compiler flags for all the source files with the extension y.
+# EXCLUDE_FILES:  The files that are not included during compilation.
+# OBJ_DIR:        The directory where object files are output.
+# LDFLAGS:        Linker flags.
+# ====================================================================================================
+# TARGET:         The target name with path.
+# TARGET_DEPENDS: The dependencies of the target.
+# ====================================================================================================
+# SRC_C_EXTS:     The extension names for C source files.
+# SRC_CPP_EXTS:   The extension names for C++ source files.
+# SRC_ASM_EXTS:   The extension names for Assembly source files.
+# OBJ_EXT:        The extension name of object files.
+# DEP_EXT:        The extension name of dependency files.
+# ====================================================================================================
+# V:              Display verbose commands instead of short commands during
+#                 the make process.
+#-----------------------------------------------------------------------------------------------------#
+# not_depend_makefile_list:  This project is independent of the makefile list. That is any
+#                            change of the makefile list will not cause remaking of the project.
+#######################################################################################################
+
+ifndef ymt_include_once
+
+ymt_include_once := 1
+
+.PHONY: all clean distclean
+
+#**************************************************************
+# Basical functions
+#**************************************************************
+eq = $(if $(subst $1,,$2),,1)
+
+do_ifeq  = $(if $(subst $1,,$2),,$3)
+do_ifneq = $(if $(subst $1,,$2),$3)
+
+define more_nl
+=================================================================
+
+
+$1
+endef
+
+exec = $(info $(call more_nl,$1))$(eval $1)
+#exec = $(eval $1)
+
+info2  = $(foreach i,$1,$(info $(X)$i = $($(X)$i)))
+value2 = $(foreach i,$1,$(info $(X)$i = $(value $(X)$i)))
+
+check_vars = $(foreach i,$1,$(if $($i),$(error Variable $i has been used! $($i))))
+clean_vars = $(foreach i,$1,$(eval $i:=))
+
+in_list = $(strip $(foreach i,$2,$(if $(subst $(strip $1),,$i),,$1)))#<>
+
+unique = $(call check_vars,__ymt_uniq_v)\
+$(strip $(foreach i,$1,$(if $(call in_list,$i,$(__ymt_uniq_v)),,$(eval __ymt_uniq_v+=$i)))$(__ymt_uniq_v))\
+$(call clean_vars,__ymt_uniq_v)
+
+std_path = $(strip $(subst /./,/, \
+  $(eval __ymt_std_path_v := $(subst ././,./,$(subst //,/,$(subst \\,/,$1)))) \
+   $(if $(subst $(__ymt_std_path_v),,$1),$(call std_path,$(__ymt_std_path_v)),$1)))
+
+get_path_list =$(call check_vars,__ymt_v1)
+get_path_list+=$(eval __ymt_v1 := $(call std_path,$1))$(call unique,$(call in_list, ./, $(__ymt_v1)) $(patsubst ./%,%,$(__ymt_v1)))
+get_path_list+=$(call clean_vars,__ymt_v1)
+
+#--------------------------------------------------------------#
+# Add a trailing LF character to the texts                     #
+#  $1 -- The texts                                             #
+#--------------------------------------------------------------#
+define nl
+$1
+
+endef
+
+TOP_MAKEFILES := $(MAKEFILE_LIST)
+GCC_C_EXTS   :=  c
+GCC_CPP_EXTS :=  cpp cc cxx
+GCC_ASM_EXTS :=  S s
+GCC_SRC_EXTS := $(GCC_C_EXTS) $(GCC_CPP_EXTS) $(GCC_ASM_EXTS)
+system_vars := CFLAGS LDFLAGS SRCS INCS DEFINES TARGET \
+  EXCLUDE_FILES LIBS OBJ_DIR TARGET_DEPENDS EXTERNAL_DEPENDS DEPENDENT_LIBS SRC_EXTS \
+  MY_C_EXTS MY_CPP_EXTS MY_ASM_EXTS OVERRIDE_CMD_AS DEPENDENT_MAKEFILES
+CLEAN_VARS = $(call clean_vars, $(system_vars))
+
+build_target = $(eval TARGET_TYPE := $1)$(eval X := $(TARGET)-)$(eval ymt_all_targets += $(X)) \
+  $(foreach i,$(system_vars),$(eval $(X)$i = $(value $i))) \
+  $(foreach i,$(GCC_C_EXTS) $(GCC_CPP_EXTS),$(eval $(X)action_$i := cc)) $(foreach i,$(GCC_ASM_EXTS),$(eval $(X)action_$i := as)) \
+  $(call exec,include $(lastword $(TOP_MAKEFILES)))
+
+BUILD_EXECUTABLE     = $(call build_target,EXE)
+BUILD_SHARED_OBJECT  = $(call build_target,SO)
+BUILD_STATIC_LIBRARY = $(call build_target,LIB)
+BUILD_RAW_BINARY     = $(call build_target,BIN)
+
+all: build-all
+clean: clean-all
+distclean: distclean-all
+print-%:
+	@echo $* = $($*)
+
+.DEFAULT_GOAL = all
+
+.PHONY: clean-all build-all distclean-all
+
+#**************************************************************
+#  include external configurations
+#**************************************************************
+$(foreach i,$(PROJECT_CONFIGS),$(eval DEPENDENT_MAKEFILES := $(TOP_MAKEFILES) $i) $(eval include $i))
+
+build-all: $(foreach i,$(ymt_all_targets),$($(i)TARGET))
+clean-all: $(foreach i,$(ymt_all_targets),clean-$($(i)TARGET))
+distclean-all: $(foreach i,$(ymt_all_targets),distclean-$($(i)TARGET))
+
+endif #ymt_include_once
+
+#########################################################################################################################################################
+# Project specified parts
+#
+
+ifndef $(X)quiet_cmd_cc
+
+$(if $(strip $(X)),,$(error Donot set the critical variable X in your makefile or environment))
+
+$(X)SRC_EXTS += $($(X)MY_C_EXTS) $($(X)MY_CPP_EXTS) $($(X)MY_ASM_EXTS)
+$(foreach i,$($(X)MY_C_EXTS) $($(X)MY_CPP_EXTS),$(eval $(X)action_$i := cc)) $(foreach i,$($(X)MY_ASM_EXTS),$(eval $(X)action_$i := as))
+
+#$(call info2,MY_ASM_EXTS)
+#$(call info2,SRC_EXTS)
+
+# Quiet commands
+$(X)quiet_cmd_cc        = @echo '  CC       $$< => $$@';
+$(X)quiet_cmd_as        = @echo '  AS       $$< => $$@';
+$(X)quiet_cmd_link      = @echo '  LINK     $$@';
+$(X)quiet_cmd_ar        = @echo '  AR       $$@';
+$(X)quiet_cmd_mkdir     = @echo '  MKDIR    $$@';
+$(X)quiet_cmd_objcopy   = @echo '  OBJCOPY  $$@';
+$(X)quiet_cmd_clean     = @echo '  CLEAN    $($(X)TARGET)';
+$(X)quiet_cmd_distclean = @echo 'DISTCLEAN  $($(X)TARGET)';
+
+
+#-------------------------------------------------------------------#
+# Replace the pattern .. with !! in the path names in order that    #
+# no directories are out of the object directory                    #
+#  $1 -- The path names                                             #
+#-------------------------------------------------------------------#
+$(X)tr_objdir = $(subst /./,/,$(if $($(X)objdir),$(subst ..,!!,$1),$1))
+
+#--------------------------------------------------#
+# Exclude user-specified files from source list.   #
+#  $1 -- The sources list                          #
+#--------------------------------------------------#
+$(X)exclude = $(filter-out $($(X)EXCLUDE_FILES),$1)
+
+#---------------------------------------------#
+# Replace the specified suffixes with $(O).   #
+#  $1 -- The file names                       #
+#  $2 -- The suffixes                         #
+#---------------------------------------------#
+$(X)get_object_names  = $(call $(X)tr_objdir,$(addprefix $($(X)objdir),$(foreach i,$2,$(patsubst %.$i,%.$($(X)O),$(filter %.$i,$1)))))
+
+#--------------------------------------------------------------------#
+# Set up one static pattern rule                                     #
+#  $1 -- The static pattern rule                                     #
+#  $2 -- cc or as
+#--------------------------------------------------------------------#
+define $(X)static_pattern_rules
+$1
+	$(call $(X)cmd,$2)
+
+endef
+
+#==============================================================#
+# Arugments:
+#  $1 - The source directory
+#  $2 - The source extension
+#  $3 - The source list: equal to $(wildcard $1/*.$2)
+#  $4 - The depend list
+#==============================================================#
+$(X)static_pattern_rules_text =$(call check_vars,__local_v)
+$(X)static_pattern_rules_text +=$(if $(strip $3), \
+ $(eval __local_v = $(call $(X)get_object_names,$3,$($(X)SRC_EXTS))) \
+ $(call $(X)static_pattern_rules,$(__local_v) $(eval __local_v := $(if $(subst ./,,$1),$1)): \
+  $(call $(X)tr_objdir,$($(X)objdir)$(__local_v)%.$($(X)O)) : $(__local_v)%.$2 $4 | $(call $(X)tr_objdir,$($(X)objdir)$1),$($(X)action_$2)))
+$(X)static_pattern_rules_text +=$(call clean_vars,__local_v)
+
+#**************************************************************
+#  Variables
+#**************************************************************
+$(X)cmd = $(if $(strip $(V)),,$($(X)quiet_cmd_$1))$(call info2,cmd_$1)$($(X)cmd_$1)
+
+$(X)cmd_cc        = $($(X)GCC) -I$$(dir $$<) $($(X)cflags) $$(CFLAGS_$$<) -c -o $$@ $$<
+$(X)cmd_as        = $(if $(strip $($(X)OVERRIDE_CMD_AS)),$(value $(X)OVERRIDE_CMD_AS),$($(X)cmd_cc))
+$(X)cmd_link      = $($(X)LINK) $($(X)ldflags) $($(X)objects) $($(X)LIBS) $($(X)DEPENDENT_LIBS) -o $$@
+$(X)cmd_mkdir     = mkdir -p $$@
+$(X)cmd_ar        = rm -f $$@ && $($(X)AR) rcvs $$@ $($(X)objects)
+$(X)cmd_objcopy   =	$($(X)OBJCOPY) -$(X)O binary $$< $$@
+$(X)cmd_clean     = rm -rf $(filter-out ./,$($(X)objdir)) $($(X)TARGET) $($(X)objects)
+#$(X)cmd_distclean = find -name '*.$($(X)O)' -o -name '*.$($(X)D)' | xargs rm -f
+$(X)cmd_distclean = rm -f $($(X)depends)
+
+$(X)target_dir = $(subst ./,,$(call std_path,$(dir $($(X)TARGET))))
+
+$(X)O := $(if $($(X)OBJ_EXT),$($(X)OBJ_EXT),o)
+$(X)D := $(if $($(X)DEP_EXT),$($(X)DEP_EXT),d)
+
+ifndef $(X)SRC_EXTS
+$(X)SRC_EXTS := $(GCC_SRC_EXTS)
+endif
+$(X)source_filters := $(foreach i,$($(X)SRC_EXTS),%.$i)
+
+$(X)objdir := $(strip $($(X)OBJ_DIR))
+$(X)objdir := $(patsubst ./%,%,$(if $($(X)objdir),$(call std_path,$($(X)objdir)/)))
+
+## Combine compiler flags togather.
+$(X)cflags  = $(foreach i,$($(X)INCS),-I$i) $($(X)DEFINES) $($(X)CFLAGS)
+$(X)ldflags = $($(X)LDFLAGS)
+
+#===============================================#
+# Output file types:
+#  EXE:  Executable
+#  AR:   Static Library
+#  SO:   Shared Object
+#  DLL:  Dynamic Link Library
+#  BIN:  Raw Binary
+#===============================================#
+$(X)TARGET_TYPE := $(strip $(TARGET_TYPE))
+ifeq ($(filter $($(X)TARGET_TYPE),SO DLL LIB EXE BIN),)
+$(error Unknown TARGET_TYPE '$($(X)TARGET_TYPE)')
+endif
+
+ifneq ($(filter DLL SO,$($(X)TARGET_TYPE)),)
+$(X)cflags  += -shared
+$(X)ldflags += -shared
+endif
+
+$(X)cflags += -MMD -MF $$@.$($(X)D) -MT $$@
+
+#-------------------------------------#
+# Get the list of all source files    #
+#-------------------------------------#
+$(X)src_f    = $(call get_path_list,$(filter $($(X)source_filters),$($(X)SRCS)))
+$(X)src_d    = $(call get_path_list,$(filter %/,$($(X)SRCS)))
+
+$(X)sources  = $(patsubst ./%,%,$(foreach i,$($(X)SRC_EXTS),$(foreach j,$($(X)src_d),$(wildcard $j*.$i))))
+$(X)src_f   := $(foreach i,$($(X)src_f),$(if $(filter $i,$($(X)sources)),,$i))
+$(X)sources := $(call $(X)exclude,$($(X)sources) $($(X)src_f))
+
+#$(info $(X)src_d = $($(X)src_d))
+#$(info $(X)sources = $($(X)sources))
+
+$(X)GCC     := $(GNU_TOOLCHAIN_PREFIX)gcc
+$(X)G++     := $(GNU_TOOLCHAIN_PREFIX)g++
+$(X)AR      := $(GNU_TOOLCHAIN_PREFIX)ar
+$(X)NM      := $(GNU_TOOLCHAIN_PREFIX)nm
+$(X)OBJCOPY := $(GNU_TOOLCHAIN_PREFIX)objcopy
+$(X)OBJDUMP := $(GNU_TOOLCHAIN_PREFIX)objdump
+$(X)LINK    := $(if $(strip $(filter %.cpp %.cc %.cxx,$($(X)sources))),$($(X)G++),$($(X)GCC))
+
+ifeq ($(strip $($(X)sources)),)
+$(error Empty source list! Please check both SRCS and SRC_EXTS are correctly set.)
+endif
+
+$(X)object_dirs = $(call $(X)tr_objdir,$(addprefix $($(X)objdir),$(sort $(dir $($(X)sources))))) $(dir $($(X)TARGET))
+
+#-------------------------------------#
+# The list of all object files        #
+#-------------------------------------#
+$(X)objects = $(call $(X)get_object_names,$($(X)sources),$($(X)SRC_EXTS))
+
+#-------------------------------------#
+# The list of all dependent files     #
+#-------------------------------------#
+$(X)depends = $(foreach i,$($(X)objects),$i.$($(X)D))
+
+ymt_dep_filters += %.$($(X)O).$($(X)D)
+
+##$(X)depend_list = $(if $(strip $(not_depend_makefile_list)),,$(foreach i,$(ymt_dep_filters),$(info filter-out, $i, $(MAKEFILE_LIST))$(filter-out,$i,$(MAKEFILE_LIST)))) $($(X)EXTERNAL_DEPENDS)
+$(X)depend_list = $($(X)DEPENDENT_MAKEFILES) $($(X)EXTERNAL_DEPENDS)
+$(call info2, depend_list)
+
+#----------------------------------------------------#
+# Construct Rules
+#----------------------------------------------------#
+$(call exec, \
+	$(foreach i,$(filter-out ./,$($(X)src_d)), \
+ $(foreach j,$($(X)SRC_EXTS), \
+  $(call $(X)static_pattern_rules_text,$i,$j,$(call $(X)exclude,$(wildcard $i*.$j)),$($(X)depend_list)))) \
+$(if $(filter ./,$($(X)src_d)), \
+  $(foreach j,$($(X)SRC_EXTS),$(call $(X)static_pattern_rules_text,./,$j,$(call $(X)exclude,$(wildcard *.$j)),$($(X)depend_list)))) \
+$(foreach i,$($(X)src_f),$(call $(X)static_pattern_rules,$(eval __ymt_v2:=$(call $(X)get_object_names,$i,$(GCC_SRC_EXTS))) \
+ $(__ymt_v2): $i $(dir $(call $(X)tr_objdir,$(__ymt_v2))))))
+
+$(call exec,$(foreach i,$(strip $($(X)object_dirs)),$(if $(call in_list,$i,$(ymt_all_objdirs)),,$i)) : % : ; $(call $(X)cmd,mkdir))
+$(eval ymt_all_objdirs += $($(X)object_dirs))
+
+define $(X)build_static_library
+$($(X)TARGET): $($(X)TARGET_DEPENDS) $($(X)objects) | $($(X)target_dir)
+	$(call $(X)cmd,ar)
+
+endef
+
+define $(X)build_raw_binary
+target1  = $(basename $($(X)TARGET)).elf
+$(X)ldflags += -nodefaultlibs -nostdlib -nostartfiles
+$($(X)TARGET): $(target1)
+	$(call $(X)cmd,objcopy)
+#	$(GNU_TOOLCHAIN_PREFIX)objdump -d $(target1) > $(basename $(@F)).lst
+#	$(GNU_TOOLCHAIN_PREFIX)nm $(target1) | sort -k1 > $(basename $(@F)).map
+endef
+
+define $(X)build_elf
+$($(X)TARGET): $($(X)TARGET_DEPENDS) $($(X)DEPENDENT_LIBS) $($(X)objects) | $($(X)target_dir)
+	$(call $(X)cmd,link)
+endef
+
+$(call exec, \
+ $(if $(call eq,$($(X)TARGET_TYPE),LIB),$($(X)build_static_library)) \
+ $(if $(call eq,$($(X)TARGET_TYPE),BIN),$($(X)build_raw_binary)) \
+ $(if $(call eq,$($(X)TARGET_TYPE),EXE),$($(X)build_elf)) \
+ $(if $(call eq,$($(X)TARGET_TYPE),SO),$($(X)build_elf)))
+
+$(call exec, clean-$($(X)TARGET): ; $(call $(X)cmd,clean))
+$(call exec, distclean-$($(X)TARGET): clean-$($(X)TARGET) ; $(call $(X)cmd,distclean))
+
+sinclude $(if $(not_depend_makefile_list),,\
+$(if $(call eq,all,$(if $(MAKECMDGOALS),$(MAKECMDGOALS),$(.DEFAULT_GOAL))),$(foreach i,$($(X)objects),$i.$($(X)D))))
+
+endif # CORE_BUILD_RULES
+
