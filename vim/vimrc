@@ -298,20 +298,23 @@ nnoremap <Leader>p1 :set paste<cr>
 nnoremap <Leader>u  viwu
 nnoremap <Leader>U  viwU
 
+"# select the entrie function for make filetype: $(...) or ${...}
 function! <SID>SelectMakeFunction(magic)
 	if a:magic == 0 | let c1 = '{' | let c2 = '}' |
 \	else | let c1 = '(' | let c2 = ')' | endif
 	let saved_pos = getpos('.')
-	let [y1, x1] = searchpairpos(c1, '', c2, 'b')
-	if x1 == 0 && y1 == 0 | call setpos(".", saved_pos) | return | endif
-	let [y0, x0] = searchpos('[$]\s*' . c1, 'bn', line('.'))
-	if x0 == 0 && y0 == 0 | call setpos(".", saved_pos) | return | endif
-	let s = 'normal %v[' . c1 . 'F$'
-	echo s | exec s
+	let current_char = getline('.')[col('.')-1]
+	if current_char != c1
+		let [y, x] = searchpairpos(c1, '', c2, 'b')
+		if x == 0 && y == 0 | call setpos(".", saved_pos) | return | endif
+	endif
+	let [y, x] = searchpos('[$]\s*' . c1, 'bn', line('.'))
+	if x == 0 && y == 0 | call setpos(".", saved_pos) | return | endif
+	exec 'normal %v[' . c1 . 'F$'
 endfunction
 
-autocmd FileType make noremap <F11> :call <SID>SelectMakeFunction(0)<CR> |
-\ noremap <F12> :call <SID>SelectMakeFunction(1)<CR>
+autocmd FileType make noremap <buffer> <F9> :call <SID>SelectMakeFunction(0)<CR> |
+\ noremap <buffer> <F10> :call <SID>SelectMakeFunction(1)<CR>
 
 set backspace=indent,eol,start
 
