@@ -1,0 +1,105 @@
+#!/usr/bin/env python
+import fnmatch
+import os, sys
+import optparse
+import collections
+
+__COMMENT__ = '''
+Create a list of source files for linux kernel which are compiled.
+
+You can run the following command to create cscope database:
+  cscope -bq -i LIST_FILE
+'''
+
+def findfiles(topdir, pattern) :
+    matches = []
+    for root, dirnames, filenames in os.walk(topdir):
+        for filename in fnmatch.filter(filenames, pattern):
+            matches.append(os.path.join(root, filename))
+    return matches
+
+def parse_cmd_file(cmd_file, dep_set) :
+    global options
+    fh = open(cmd_file, "r")
+    if fh is None :
+        raise Exception("Cannot open " + cmd_file)
+    flag = False
+    for line in fh :
+        file = ''
+        wildcard = False
+        if flag :
+            a = line.split()
+            if len(a) == 0 :
+                break
+            elif a[0] == '$(wildcard' :
+                b = a[1].split(')')
+                file = b[0]
+                wildcard = True
+            else :
+                file = a[0]
+        elif line.find("deps_") == 0 :
+            flag = True
+            continue
+        elif line.find("source_") == 0 :
+            a = line.split()
+            file = a[2].rstrip('\r\n')
+        if len(file) > 0 and file.find('/usr/include') != 0 :
+            for prefix in (options.kerneldir, options.outputdir) :
+                if file[0] != '/' :
+                    realpath = prefix + '/' + file
+                else :
+                    realpath = file
+                realpath = os.path.abspath(realpath)
+                file_exists = os.access(realpath, os.R_OK)
+                if file_exists :
+                    break
+            if not wildcard and not file_exists :
+                raise Exception(file + " not exists" )
+            if file_exists :
+                dep_set.add(realpath)
+    fh.close()
+    return
+
+# create the options parser
+optionsparser = optparse.OptionParser()
+
+# define the options we require/support
+optionsparser.add_option("-k", "--kernel-dir", dest="kerneldir", help="specify linux kernel source directory", default='')
+optionsparser.add_option("-o", "--output-dir", dest="outputdir", help="sepcify linux kernel output directory", default='')
+optionsparser.add_option("-f", "--file", dest="proj_file", help="specify the list file name", default='')
+
+# parse the options
+(options, args) = optionsparser.parse_args()
+
+if not options.kerneldir or not options.outputdir:
+    optionsparser.print_help()
+    exit(1)
+
+options.outputdir = os.path.abspath(options.outputdir)
+options.kerneldir = os.path.abspath(options.kerneldir)
+
+prefix = options.outputdir + '/'
+prefix_len = len(prefix)
+obj_list = []
+#dep_set = OrderedSet([])
+dep_set = set([])
+
+for filename in findfiles(options.outputdir, "*.o") :
+    filename = filename[prefix_len:]
+    if not filename.endswith('built-in.o') :
+        obj_list.append(filename)
+        cmd_file = os.path.dirname(filename) + '/.' + os.path.basename(filename) + '.cmd'
+        if os.access(prefix + cmd_file, os.R_OK) :
+            parse_cmd_file(prefix + cmd_file, dep_set)
+        continue
+
+if options.proj_file :
+    fh = open(options.proj_file, "w")
+else :
+    fh = sys.stdout
+
+for x in dep_set :
+    print >>fh, x
+
+if options.proj_file :
+    fh.close()
