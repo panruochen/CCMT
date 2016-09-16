@@ -43,10 +43,6 @@ set cmdheight=2
 syntax on
 filetype plugin indent on
 
-" Tabstop Setting
-"
-set tabstop=4 softtabstop=4 shiftwidth=4
-
 "======================================================================"
 "  Add a cscope database if exists in current or ancestral directories "
 "======================================================================"
@@ -70,11 +66,6 @@ endif
 set laststatus=2
 set statusline=%F\ %m%r%h\ %w\ \ Line:\ %l/%L:%c
 
-"
-" Auto commands
-"
-autocmd BufEnter *.c,*.h,*.cpp,*.hpp,*.cc,*.cxx,*.S,*.s set noexpandtab
-autocmd BufEnter *.py set expandtab tabstop=4
 
 if exists("tags")
     set tag=tags
@@ -327,6 +318,13 @@ colorscheme evening2
 "hi LineNr guifg=purple gui=underline
 "hi LineNr ctermfg=Magenta cterm=underline
 "hi VertSplit ctermfg=DarkGrey ctermbg=DarkGrey guibg=fg guifg=fg                                                        |
+
+"# Auto commands
+autocmd BufEnter *.c,*.h,*.cpp,*.hpp,*.cc,*.cxx,*.S,*.s set noexpandtab
+autocmd BufEnter *.py set expandtab tabstop=4
+
+"# Tabstop Setting
+set tabstop=4 softtabstop=4 shiftwidth=4
 
 " Apply local configurations for the project
 let local_vimrc = findfile("local.vimrc", ".;")
