@@ -75,11 +75,9 @@ define more_nl
 $1
 endef
 
-exec = $(info $(call more_nl,$1))$(eval $1)
-#exec = $(eval $1)
-
+#exec = $(info $(call more_nl,$1))$(eval $1)
+exec = $(eval $1)
 info2  = $(foreach i,$1,$(info $(X)$i = $($(X)$i)))
-value2 = $(foreach i,$1,$(info $(X)$i = $(value $(X)$i)))
 
 check_vars = $(foreach i,$1,$(if $($i),$(error Variable $i has been used! $($i))))
 clean_vars = $(foreach i,$1,$(eval $i:=))
@@ -114,11 +112,12 @@ GCC_ASM_EXTS :=  S s
 GCC_SRC_EXTS := $(GCC_C_EXTS) $(GCC_CPP_EXTS) $(GCC_ASM_EXTS)
 system_vars := CFLAGS LDFLAGS SRCS INCS DEFINES TARGET \
   EXCLUDE_FILES LIBS OBJ_DIR TARGET_DEPENDS EXTERNAL_DEPENDS DEPENDENT_LIBS SRC_EXTS \
-  MY_C_EXTS MY_CPP_EXTS MY_ASM_EXTS OVERRIDE_CMD_AS DEPENDENT_MAKEFILES
+  MY_C_EXTS MY_CPP_EXTS MY_ASM_EXTS OVERRIDE_CMD_AS
+system_vars_ext := DEPENDENT_MAKEFILES
 CLEAN_VARS = $(call clean_vars, $(system_vars))
 
 build_target = $(eval TARGET_TYPE := $1)$(eval X := $(TARGET)-)$(eval ymt_all_targets += $(X)) \
-  $(foreach i,$(system_vars),$(eval $(X)$i = $(value $i))) \
+  $(foreach i,$(system_vars) $(system_vars_ext),$(eval $(X)$i = $(value $i))) \
   $(foreach i,$(GCC_C_EXTS) $(GCC_CPP_EXTS),$(eval $(X)action_$i := cc)) $(foreach i,$(GCC_ASM_EXTS),$(eval $(X)action_$i := as)) \
   $(call exec,include $(lastword $(TOP_MAKEFILES)))
 
@@ -158,9 +157,6 @@ $(if $(strip $(X)),,$(error Donot set the critical variable X in your makefile o
 
 $(X)SRC_EXTS += $($(X)MY_C_EXTS) $($(X)MY_CPP_EXTS) $($(X)MY_ASM_EXTS)
 $(foreach i,$($(X)MY_C_EXTS) $($(X)MY_CPP_EXTS),$(eval $(X)action_$i := cc)) $(foreach i,$($(X)MY_ASM_EXTS),$(eval $(X)action_$i := as))
-
-#$(call info2,MY_ASM_EXTS)
-#$(call info2,SRC_EXTS)
 
 # Quiet commands
 $(X)quiet_cmd_cc        = @echo '  CC       $$< => $$@';
@@ -209,19 +205,18 @@ endef
 #  $1 - The source directory
 #  $2 - The source extension
 #  $3 - The source list: equal to $(wildcard $1/*.$2)
-#  $4 - The depend list
 #==============================================================#
-$(X)static_pattern_rules_text =$(call check_vars,__local_v)
-$(X)static_pattern_rules_text +=$(if $(strip $3), \
- $(eval __local_v = $(call $(X)get_object_names,$3,$($(X)SRC_EXTS))) \
- $(call $(X)static_pattern_rules,$(__local_v) $(eval __local_v := $(if $(subst ./,,$1),$1)): \
-  $(call $(X)tr_objdir,$($(X)objdir)$(__local_v)%.$($(X)O)) : $(__local_v)%.$2 $4 | $(call $(X)tr_objdir,$($(X)objdir)$1),$($(X)action_$2)))
-$(X)static_pattern_rules_text +=$(call clean_vars,__local_v)
+$(X)static_pattern_rules_text  =  $(call check_vars,__local_v) \
+  $(if $(strip $3), $(eval __local_v = $(call $(X)get_object_names,$3,$($(X)SRC_EXTS))) \
+  $(call $(X)static_pattern_rules,$(__local_v) $(eval __local_v := $(if $(subst ./,,$1),$1)): \
+    $(call $(X)tr_objdir,$($(X)objdir)$(__local_v)%.$($(X)O)) : $(__local_v)%.$2 $($(X)depend_list) | \
+	$(call $(X)tr_objdir,$($(X)objdir)$1),$($(X)action_$2))) \
+  $(call clean_vars,__local_v)
 
 #**************************************************************
 #  Variables
 #**************************************************************
-$(X)cmd = $(if $(strip $(V)),,$($(X)quiet_cmd_$1))$(call info2,cmd_$1)$($(X)cmd_$1)
+$(X)cmd = $(if $(strip $(V)),,$($(X)quiet_cmd_$1))$($(X)cmd_$1)
 
 $(X)cmd_cc        = $($(X)GCC) -I$$(dir $$<) $($(X)cflags) $$(CFLAGS_$$<) -c -o $$@ $$<
 $(X)cmd_as        = $(if $(strip $($(X)OVERRIDE_CMD_AS)),$(value $(X)OVERRIDE_CMD_AS),$($(X)cmd_cc))
@@ -278,6 +273,7 @@ $(X)src_d    = $(call get_path_list,$(filter %/,$($(X)SRCS)))
 
 $(X)sources  = $(patsubst ./%,%,$(foreach i,$($(X)SRC_EXTS),$(foreach j,$($(X)src_d),$(wildcard $j*.$i))))
 $(X)src_f   := $(foreach i,$($(X)src_f),$(if $(filter $i,$($(X)sources)),,$i))
+$(foreach i,$($(X)src_f),$(foreach j,$($(X)SRC_EXTS),$(if $(filter %.$j,$i),$(eval action-$i := $($(X)action_$j)))))
 $(X)sources := $(call $(X)exclude,$($(X)sources) $($(X)src_f))
 
 #$(info $(X)src_d = $($(X)src_d))
@@ -309,21 +305,19 @@ $(X)depends = $(foreach i,$($(X)objects),$i.$($(X)D))
 
 ymt_dep_filters += %.$($(X)O).$($(X)D)
 
-##$(X)depend_list = $(if $(strip $(not_depend_makefile_list)),,$(foreach i,$(ymt_dep_filters),$(info filter-out, $i, $(MAKEFILE_LIST))$(filter-out,$i,$(MAKEFILE_LIST)))) $($(X)EXTERNAL_DEPENDS)
 $(X)depend_list = $($(X)DEPENDENT_MAKEFILES) $($(X)EXTERNAL_DEPENDS)
-$(call info2, depend_list)
 
 #----------------------------------------------------#
 # Construct Rules
 #----------------------------------------------------#
 $(call exec, \
-	$(foreach i,$(filter-out ./,$($(X)src_d)), \
- $(foreach j,$($(X)SRC_EXTS), \
-  $(call $(X)static_pattern_rules_text,$i,$j,$(call $(X)exclude,$(wildcard $i*.$j)),$($(X)depend_list)))) \
-$(if $(filter ./,$($(X)src_d)), \
-  $(foreach j,$($(X)SRC_EXTS),$(call $(X)static_pattern_rules_text,./,$j,$(call $(X)exclude,$(wildcard *.$j)),$($(X)depend_list)))) \
-$(foreach i,$($(X)src_f),$(call $(X)static_pattern_rules,$(eval __ymt_v2:=$(call $(X)get_object_names,$i,$(GCC_SRC_EXTS))) \
- $(__ymt_v2): $i $(dir $(call $(X)tr_objdir,$(__ymt_v2))))))
+  $(foreach i,$(filter-out ./,$($(X)src_d)), \
+    $(foreach j,$($(X)SRC_EXTS), \
+      $(call $(X)static_pattern_rules_text,$i,$j,$(call $(X)exclude,$(wildcard $i*.$j))))) \
+  $(if $(filter ./,$($(X)src_d)), \
+    $(foreach j,$($(X)SRC_EXTS),$(call $(X)static_pattern_rules_text,./,$j,$(call $(X)exclude,$(wildcard *.$j))))) \
+  $(foreach i,$($(X)src_f),$(call $(X)static_pattern_rules,$(eval __ymt_v2:=$(call $(X)get_object_names,$i,$(GCC_SRC_EXTS))) \
+   $(__ymt_v2): $i $($(X)depend_list) | $(dir $(call $(X)tr_objdir,$(__ymt_v2))),$(action-$i))))
 
 $(call exec,$(foreach i,$(strip $($(X)object_dirs)),$(if $(call in_list,$i,$(ymt_all_objdirs)),,$i)) : % : ; $(call $(X)cmd,mkdir))
 $(eval ymt_all_objdirs += $($(X)object_dirs))
