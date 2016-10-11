@@ -84,13 +84,13 @@ clean_vars = $(foreach i,$1,$(eval $i:=))
 
 in_list = $(strip $(foreach i,$2,$(if $(subst $(strip $1),,$i),,$1)))#<>
 
-unique = $(call check_vars,__ymt_uniq_v)\
-$(strip $(foreach i,$1,$(if $(call in_list,$i,$(__ymt_uniq_v)),,$(eval __ymt_uniq_v+=$i)))$(__ymt_uniq_v))\
-$(call clean_vars,__ymt_uniq_v)
+unique = $(call check_vars,__ymt_v8)\
+$(strip $(foreach i,$1,$(if $(call in_list,$i,$(__ymt_v8)),,$(eval __ymt_v8+=$i)))$(__ymt_v8))\
+$(call clean_vars,__ymt_v8)
 
 std_path = $(strip $(subst /./,/, \
-  $(eval __ymt_std_path_v := $(subst ././,./,$(subst //,/,$(subst \\,/,$1)))) \
-   $(if $(subst $(__ymt_std_path_v),,$1),$(call std_path,$(__ymt_std_path_v)),$1)))
+  $(eval __ymt_v9 := $(subst ././,./,$(subst //,/,$(subst \\,/,$1)))) \
+   $(if $(subst $(__ymt_v9),,$1),$(call std_path,$(__ymt_v9)),$1)))
 
 get_path_list = $(call check_vars,__ymt_v1) \
   $(eval __ymt_v1 := $(call std_path,$1)) \
@@ -205,7 +205,7 @@ cmd_cc        = $(GCC) -I$$(dir $$<) $(cflags) $$(CFLAGS_$$<) -c -o $$@ $$<
 cmd_as        = $(if $(strip $(OVERRIDE_CMD_AS)),$(value OVERRIDE_CMD_AS),$(cmd_cc))
 cmd_link      = $(LINK) $(ldflags) $(objects) $(LIBS) $(DEPENDENT_LIBS) -o $$@
 cmd_mkdir     = mkdir -p $$@
-cmd_ar        = rm -f $$@ && $(AR) rcvs $$@ $(objects)
+cmd_ar        = rm -f $$@ && $(AR) rcs $$@ $(objects)
 cmd_objcopy   =	$(OBJCOPY) -O binary $$< $$@
 cmd_clean     = rm -rf $(filter-out ./,$(objdir)) $(TARGET) $(objects)
 cmd_distclean = rm -f $(depends)
