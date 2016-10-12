@@ -28,10 +28,10 @@
 #                 are taken as files. The files with specified extension names in those directories will
 #                 be automatically involved in compilation.
 # CFLAGS_xxx.y:   User-specified compiler flags for the xxx.y source file.
-#                 YUNZ will automatically add extra cflags for include directories and macro
+#                 YUNZ will automatically add extra ccflags for include directories and macro
 #                 definitions.
 # CFLAGS_OVERRIDE_xxx.y:
-#                 Overall compiler flags for the xxx.y source file. No any extra cflags will be
+#                 Overall compiler flags for the xxx.y source file. No any extra ccflags will be
 #                 involved for compling this file.
 # MY_CFLAGS_*.y:  Compiler flags for all the source files with the extension y.
 # EXCLUDE_FILES:  The files that are not included during compilation.
@@ -78,6 +78,7 @@ endef
 #exec = $(info $(call more_nl,$1))$(eval $1)
 exec = $(eval $1)
 info2  = $(foreach i,$1,$(info $i = $($i)))
+info3  = $(foreach i,$1,$(info $i = $(value $i)))
 
 check_vars = $(foreach i,$1,$(if $($i),$(error Variable $i has been used! $($i))))
 clean_vars = $(foreach i,$1,$(eval $i:=))
@@ -146,10 +147,9 @@ distclean-all: $(foreach i,$(ymt_all_targets),distclean-$(i))
 
 endif #ymt_include_once
 
-#########################################################################################################################################################
-# Project specified parts
-#
-
+#*******************************************************************
+# PROJECT SPECIFIED PARTS
+#*******************************************************************
 ifneq ($(strip $(X)),)
 
 SRC_EXTS += $(MY_C_EXTS) $(MY_CPP_EXTS) $(MY_ASM_EXTS)
@@ -189,7 +189,6 @@ endef
 #**************************************************************
 #  Variables
 #**************************************************************
-cmd = $(if $(strip $(V)),,$(quiet_cmd_$1))$(cmd_$1)
 
 # Quiet commands
 quiet_cmd_cc        = @echo '  CC       $$< => $$@';
@@ -201,12 +200,14 @@ quiet_cmd_objcopy   = @echo '  OBJCOPY  $$@';
 quiet_cmd_clean     = @echo '  CLEAN    $(TARGET)';
 quiet_cmd_distclean = @echo 'DISTCLEAN  $(TARGET)';
 
-cmd_cc        = $(GCC) -I$$(dir $$<) $(cflags) $$(CFLAGS_$$<) -c -o $$@ $$<
+cmd = $(if $(strip $(V)),,$(quiet_cmd_$1))$(cmd_$1)
+
+cmd_cc        = $(GCC) -I$$(dir $$<) $(ccflags) $(CFLAGS_$$<) -c -o $$@ $$<
 cmd_as        = $(if $(strip $(OVERRIDE_CMD_AS)),$(value OVERRIDE_CMD_AS),$(cmd_cc))
 cmd_link      = $(LINK) $(ldflags) $(objects) $(LIBS) $(DEPENDENT_LIBS) -o $$@
 cmd_mkdir     = mkdir -p $$@
 cmd_ar        = rm -f $$@ && $(AR) rcs $$@ $(objects)
-cmd_objcopy   =	$(OBJCOPY) -O binary $$< $$@
+cmd_objcopy   =	$(OBJCOPY) -O binary $< $$@
 cmd_clean     = rm -rf $(filter-out ./,$(objdir)) $(TARGET) $(objects)
 cmd_distclean = rm -f $(depends)
 
@@ -222,7 +223,7 @@ objdir := $(strip $(OBJ_DIR))
 objdir := $(patsubst ./%,%,$(if $(objdir),$(call std_path,$(objdir)/)))
 
 ## Combine compiler flags togather.
-cflags  = $(foreach i,$(INCS),-I$i) $(DEFINES) $(CFLAGS)
+ccflags = $(foreach i,$(INCS),-I$i) $(DEFINES) $(CFLAGS)
 ldflags = $(LDFLAGS)
 
 #===============================================#
@@ -239,11 +240,11 @@ $(error Unknown TARGET_TYPE '$(TARGET_TYPE)')
 endif
 
 ifneq ($(filter DLL SO,$(TARGET_TYPE)),)
-cflags  += -shared
+ccflags += -shared
 ldflags += -shared
 endif
 
-cflags += -MMD -MF $$@.$(D) -MT $$@
+ccflags += -MMD -MF $$@.$(D) -MT $$@
 
 #--------------------------------------------------------#
 # Split apart source files and directories.
@@ -287,8 +288,6 @@ objects = $(call get_object_names,$(sources),$(SRC_EXTS))
 # The list of all dependent files     #
 #-------------------------------------#
 depends = $(foreach i,$(objects),$i.$(D))
-
-ymt_dep_filters += %.$(O).$(D)
 
 depend_list = $(DEPENDENT_MAKEFILES) $(EXTERNAL_DEPENDS)
 
