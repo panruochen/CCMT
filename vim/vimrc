@@ -261,6 +261,51 @@ nnoremap %es  :% call <SID>vConvertTabsOrSpaces(1)<CR>
 
 "nnoremap <Leader>et  :call <SID>nConvertTabsOrSpaces(0)<CR>
 "nnoremap <Leader>es  :call <SID>nConvertTabsOrSpaces(1)<CR>
+"
+
+"=================================================================================================================
+"  vCopyColumn: Copy the first column of the selected range to register @"
+"  makePrintf:  Paste to the cursor a little fragment of C code to print the varibles
+"               which are saved in register @"
+"=================================================================================================================
+function! <SID>vCopyColumn(fid) range
+    let y = a:firstline
+	let s = ""
+    while y <= a:lastline
+		let fields = split(getline(y))
+		if len(fields) > 0
+			let tmp = split(fields[a:fid], '=')
+			let s .= " " . tmp[0]
+		endif
+		let y += 1
+    endwhile
+	let @" = s
+	return s
+endfunction
+
+function! <SID>nPastePrintf(vars)
+	let sep = ','
+	let s1 = "printf(\""
+	let s2 = "    "
+	let fields = split(a:vars)
+	let i = 0
+	while i < len(fields)
+		let s1 .=  " " . fields[i] . " %u" . sep
+		let s2 .=  " " . fields[i] . ','
+		let i += 1
+    endwhile
+
+	if len(fields) > 0
+		let s1 = s1[s1 : len(s1) - 2] . "\\n\",\n"
+		let s2 = s2[s2 : len(s2) - 2] . ");\n"
+		let @0 = s1 . s2
+		exec 'normal "0p'
+	endif
+endfunction
+
+autocmd FileType c,cpp,h vnoremap <buffer> <leader>c :call <SID>vCopyColumn(0)<CR> |
+\ nnoremap <buffer> <leader>x :call <SID>nPastePrintf(@")<CR>
+"=================================================================================================================
 
 " Use <TAB> key to switch between windows in NORMAL MODE
 nnoremap <TAB> <C-W>W
