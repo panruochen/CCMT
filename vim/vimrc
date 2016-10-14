@@ -303,8 +303,75 @@ function! <SID>nPastePrintf(vars)
 	endif
 endfunction
 
-autocmd FileType c,cpp,h vnoremap <buffer> <leader>c :call <SID>vCopyColumn(0)<CR> |
-\ nnoremap <buffer> <leader>x :call <SID>nPastePrintf(@")<CR>
+autocmd FileType c,cpp,h vnoremap <buffer> <leader>'c :call <SID>vCopyColumn(0)<CR> |
+\ nnoremap <buffer> <leader>'x :call <SID>nPastePrintf(@")<CR>
+
+"# select the entrie function for c/c++ filetype: {...}
+function! <SID>SelectCFunction()
+	let saved_pos = getpos('.')
+	let endpos = saved_pos
+	let i = 0
+	let pattern = '[A-Za-z_][A-Za-z_0-9]*'
+	while 1
+		exec 'normal ]}'
+		let a = getpos('.')
+		if endpos == a | break | endif
+		let endpos = a
+		let i += 1
+	endwhile
+	" move to the starting {
+	exec 'normal %'
+
+	if i == 0 | call setpos(".", saved_pos) | return | endif
+	if search(')', 'b') == 0 | call setpos(".", saved_pos) | return | endif
+
+	" move to starting (
+	exec 'normal %'
+	if search(pattern, 'b') == 0 | call setpos(".", saved_pos) | return | endif
+
+	while search(pattern, 'b', line('.')-1) > 0
+		echo "line " . line('.')
+	endwhile
+	exec 'normal v' . endpos[1] . 'G' . endpos[2] . '|'
+endfunction
+
+"# select the entrie function for c/c++ filetype: {...}
+function! <SID>RemoveOneBlock()
+	let saved_pos = getpos('.')
+	let found = 0
+
+	if search('\<\(if\|while\|for\)\>', 'b')  == 0 |  break | endif
+	let [y, starty, startx, x] = getpos('.')
+
+	call search('(')
+	exec 'normal %'
+
+	call search('{')
+	exec 'normal %'
+	let [y, endy, endx, x] = getpos('.')
+
+	echo printf("[%d,%d] == [%d,%d] [%d,%d]", saved_pos[1], saved_pos[2], starty, startx, endy, endx)
+	call setpos('.', saved_pos)
+	let b = [ 0, 0 ]
+	while 1
+		let a = searchpairpos('{', '', '}', 'b')
+		if a == b | call setpos(".", saved_pos) | break | endif
+
+		let b = a | let y = a[0] | let x = a[1]
+
+		if (y > starty || (y == starty && x >= startx)) &&
+\          (y < endy   || (y == endy && x <= endy))
+			echo printf('normal %dG%d|v%dG%d|', starty, startx, endy, endx)
+"			exec printf('normal %dG%d|v%dG%d|', starty, startx, endy, endx)
+			break
+		endif
+	endwhile
+
+endfunction
+
+autocmd FileType c,cpp,h noremap <buffer> <leader>'f :call <SID>SelectCFunction()<CR> |
+\ noremap <buffer> <leader>'b :call <SID>RemoveOneBlock()<CR>
+
 "=================================================================================================================
 
 " Use <TAB> key to switch between windows in NORMAL MODE
@@ -330,7 +397,7 @@ nnoremap <Leader>\   :let @/ = ''<CR>
 nnoremap K   kJ
 
 nnoremap <Leader>p0 :set nopaste<cr>
-nnoremap <Leader>p1 :set paste<cr>
+nnoremap <Leader>p9 :set paste<cr>
 nnoremap <Leader>u  viwu
 nnoremap <Leader>U  viwU
 
