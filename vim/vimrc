@@ -335,38 +335,57 @@ function! <SID>SelectCFunction()
 	exec 'normal v' . endpos[1] . 'G' . endpos[2] . '|'
 endfunction
 
+function! <SID>InBlock(y, x, pos1, pos2)
+	echo printf("[%d,%d] in? [%d,%d], [%d,%d]", a:y, a:x, a:pos1[1], a:pos1[2], a:pos2[1], a:pos2[2])
+	if (a:y < a:pos1[1] || (a:y == a:pos1[1] && a:x < a:pos1[2])) ||
+\      (a:y > a:pos2[1] || (a:y == a:pos2[1] && a:x > a:pos2[2]))
+	   echo " -- false"
+	   return 0
+	endif
+	echo " -- true"
+	return 1
+endfunction
+
 "# select the entrie function for c/c++ filetype: {...}
 function! <SID>RemoveOneBlock()
 	let saved_pos = getpos('.')
-	let found = 0
 
 	if search('\<\(if\|while\|for\)\>', 'b')  == 0 |  break | endif
-	let [y, starty, startx, x] = getpos('.')
+	let pos_s = getpos('.')
 
 	call search('(')
 	exec 'normal %'
 
 	call search('{')
 	exec 'normal %'
-	let [y, endy, endx, x] = getpos('.')
+	let pos_e = getpos('.')
 
-	echo printf("[%d,%d] == [%d,%d] [%d,%d]", saved_pos[1], saved_pos[2], starty, startx, endy, endx)
-	call setpos('.', saved_pos)
-	let b = [ 0, 0 ]
-	while 1
-		let a = searchpairpos('{', '', '}', 'b')
-		if a == b | call setpos(".", saved_pos) | break | endif
+	if !<SID>InBlock(saved_pos[1], saved_pos[2], pos_s, pos_e)
+		call setpos('.', saved_pos)
+		return
+	endif
 
-		let b = a | let y = a[0] | let x = a[1]
-
-		if (y > starty || (y == starty && x >= startx)) &&
-\          (y < endy   || (y == endy && x <= endy))
-			echo printf('normal %dG%d|v%dG%d|', starty, startx, endy, endx)
-"			exec printf('normal %dG%d|v%dG%d|', starty, startx, endy, endx)
-			break
-		endif
+	let i = 0
+	let n = [ 0, 0 ]
+	let p = [ '{', '}' ]
+	let f = [ 'b', '' ]
+	while i < 2
+		call setpos('.', saved_pos)
+		while 1
+			let [y, x] = searchpos(p[i], f[i])
+			if !<SID>InBlock(y,x, pos_s, pos_e)
+"				echo printf('normal %dG%d|v%dG%d|', starty, startx, endy, endx)
+				break
+			endif
+		endwhile
+		let i += 1
 	endwhile
 
+	if n[0] != n[1]
+		call setpos('.', saved_pos)
+		return
+	endif
+	exec printf('normal %dG%d|v%dG%d|', pos_s[1], pos_s[2], pos_e[1], pos_e[2])
 endfunction
 
 autocmd FileType c,cpp,h noremap <buffer> <leader>'f :call <SID>SelectCFunction()<CR> |
