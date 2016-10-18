@@ -263,6 +263,14 @@ nnoremap %es  :% call <SID>vConvertTabsOrSpaces(1)<CR>
 "nnoremap <Leader>es  :call <SID>nConvertTabsOrSpaces(1)<CR>
 "
 
+let s:ZERO_POINT = [0,0,0,0]
+
+function! <SID>SelectTexts(start, end)
+	call setpos('.', a:start)
+	normal! v
+	call setpos('.', a:end)
+endfunction
+
 "=================================================================================================================
 "  vCopyColumn: Copy the first column of the selected range to register @"
 "  makePrintf:  Paste to the cursor a little fragment of C code to print the varibles
@@ -306,90 +314,81 @@ endfunction
 autocmd FileType c,cpp,h vnoremap <buffer> <leader>'c :call <SID>vCopyColumn(0)<CR> |
 \ nnoremap <buffer> <leader>'x :call <SID>nPastePrintf(@")<CR>
 
-"# select the entrie function for c/c++ filetype: {...}
-function! <SID>SelectCFunction()
-	let saved_pos = getpos('.')
-	let endpos = saved_pos
-	let i = 0
-	let pattern = '[A-Za-z_][A-Za-z_0-9]*'
+function! <SID>SelectMostOutterBlock()
+	let savedpos = getpos('.')
+	let endpos = savedpos
+	let retval = [ s:ZERO_POINT, s:ZERO_POINT ]
+
 	while 1
-		exec 'normal ]}'
+		normal ]}
 		let a = getpos('.')
 		if endpos == a | break | endif
 		let endpos = a
-		let i += 1
 	endwhile
-	" move to the starting {
-	exec 'normal %'
 
-	if i == 0 | call setpos(".", saved_pos) | return | endif
-	if search(')', 'b') == 0 | call setpos(".", saved_pos) | return | endif
+	if endpos != savedpos
+		normal %
+		let retval = [ getpos('.'), endpos ]
+	endif
 
+	call setpos('.', savedpos)
+	return retval
+endfunction
+
+"# select the entrie function for c/c++ filetype: {...}
+function! <SID>SelectCFunction()
+	let savedpos = getpos('.')
+	let [ startpos, endpos ] = <SID>SelectMostOutterBlock()
+
+	if startpos == s:ZERO_POINT | call setpos(".", savedpos) | return | endif
+
+	call setpos('.', startpos)
+	" move to starting )
+	if search(')', 'b') == 0 | call setpos(".", savedpos) | return | endif
 	" move to starting (
-	exec 'normal %'
-	if search(pattern, 'b') == 0 | call setpos(".", saved_pos) | return | endif
+	normal %
 
-	while search(pattern, 'b', line('.')-1) > 0
-		echo "line " . line('.')
-	endwhile
-	exec 'normal v' . endpos[1] . 'G' . endpos[2] . '|'
+	let pattern = '[A-Za-z_][A-Za-z_0-9]*'
+	if search(pattern, 'b') == 0 | call setpos(".", savedpos) | return | endif
+	while search(pattern, 'b', line('.')-1) > 0 | endwhile
+
+	call <SID>SelectTexts(getpos('.'), endpos)
 endfunction
 
 function! <SID>InBlock(y, x, pos1, pos2)
-	echo printf("[%d,%d] in? [%d,%d], [%d,%d]", a:y, a:x, a:pos1[1], a:pos1[2], a:pos2[1], a:pos2[2])
 	if (a:y < a:pos1[1] || (a:y == a:pos1[1] && a:x < a:pos1[2])) ||
 \      (a:y > a:pos2[1] || (a:y == a:pos2[1] && a:x > a:pos2[2]))
-	   echo " -- false"
 	   return 0
 	endif
-	echo " -- true"
 	return 1
 endfunction
 
 "# select the entrie function for c/c++ filetype: {...}
-function! <SID>RemoveOneBlock()
-	let saved_pos = getpos('.')
+function! <SID>SelectOneBlock(dir)
+	let savedpos = getpos('.')
+	let [ obs, obe ] = <SID>SelectMostOutterBlock()
 
-	if search('\<\(if\|while\|for\)\>', 'b')  == 0 |  break | endif
+	if search('\<\(if\|while\|for\|switch\|else\)\>', a:dir) == 0 | break | endif
 	let pos_s = getpos('.')
 
 	call search('(')
-	exec 'normal %'
+	normal %
 
 	call search('{')
-	exec 'normal %'
+	normal %
 	let pos_e = getpos('.')
 
-	if !<SID>InBlock(saved_pos[1], saved_pos[2], pos_s, pos_e)
-		call setpos('.', saved_pos)
+	if !<SID>InBlock(pos_s[1], pos_s[2], obs, obe) || !<SID>InBlock(pos_e[1], pos_e[2], obs, obe)
+		call setpos('.', savedpos)
 		return
 	endif
-
-	let i = 0
-	let n = [ 0, 0 ]
-	let p = [ '{', '}' ]
-	let f = [ 'b', '' ]
-	while i < 2
-		call setpos('.', saved_pos)
-		while 1
-			let [y, x] = searchpos(p[i], f[i])
-			if !<SID>InBlock(y,x, pos_s, pos_e)
-"				echo printf('normal %dG%d|v%dG%d|', starty, startx, endy, endx)
-				break
-			endif
-		endwhile
-		let i += 1
-	endwhile
-
-	if n[0] != n[1]
-		call setpos('.', saved_pos)
-		return
-	endif
-	exec printf('normal %dG%d|v%dG%d|', pos_s[1], pos_s[2], pos_e[1], pos_e[2])
+	call <SID>SelectTexts(pos_s, pos_e)
 endfunction
 
-autocmd FileType c,cpp,h noremap <buffer> <leader>'f :call <SID>SelectCFunction()<CR> |
-\ noremap <buffer> <leader>'b :call <SID>RemoveOneBlock()<CR>
+autocmd FileType c,cpp,h |
+\ noremap <buffer> <leader>\n :call <SID>SelectCFunction()<CR> |
+\ noremap <buffer> <leader>\b :call <SID>SelectOneBlock('b')<CR> |
+\ noremap <buffer> <leader>\f :call <SID>SelectOneBlock('')<CR>
 
 "=================================================================================================================
 
@@ -410,7 +409,7 @@ nnoremap <Leader>]   :let &number=!&number <bar> let &relativenumber=0 <CR>
 nnoremap <Leader>[   :let &relativenumber=!&relativenumber <bar> let &number=0 <CR>
 
 "# Hide search highlighting
-nnoremap <Leader>\   :let @/ = ''<CR>
+nnoremap <Leader>0   :let @/ = ''<CR>
 
 "# Join two lines
 nnoremap K   kJ
@@ -424,14 +423,14 @@ nnoremap <Leader>U  viwU
 function! <SID>SelectMakeFunction(magic)
 	if a:magic == 0 | let c1 = '{' | let c2 = '}' |
 \	else | let c1 = '(' | let c2 = ')' | endif
-	let saved_pos = getpos('.')
+	let savedpos = getpos('.')
 	let current_char = getline('.')[col('.')-1]
 	if current_char != c1
 		let [y, x] = searchpairpos(c1, '', c2, 'b')
-		if x == 0 && y == 0 | call setpos(".", saved_pos) | return | endif
+		if x == 0 && y == 0 | call setpos(".", savedpos) | return | endif
 	endif
 	let [y, x] = searchpos('[$]\s*' . c1, 'bn', line('.'))
-	if x == 0 && y == 0 | call setpos(".", saved_pos) | return | endif
+	if x == 0 && y == 0 | call setpos(".", savedpos) | return | endif
 	exec 'normal %v[' . c1 . 'F$'
 endfunction
 
