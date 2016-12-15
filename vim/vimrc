@@ -19,23 +19,51 @@ endif
 
 set fileencodings=utf-8,ucs-bom,cp936
 
-
 exec 'set runtimepath+=' . expand('<sfile>:p:h')
 
+let s:fontname="Microsoft Yahei Mono"
+let s:fontsize=16
+
 if has("gui_running")
+"==============================================================================
+function! <SID>set_guifont(fontname, fontsize)
+  let ss = substitute(a:fontname, " ", "\\\\ ", "g")
+  if a:fontsize > 0 | let ss .=  ':h' . a:fontsize | endif
+  let action = 'set guifont=' . ss
+  exec action
+  let action = 'set guifontwide=' . ss
+  exec action
+endfunction
+
+function! <SID>inc_gui_font_size(delta)
+  let s:fontsize += a:delta
+  if s:fontsize < 10 | let s:fontsize = 10 | endif
+  if s:fontsize > 40 | let s:fontsize = 40 | endif
+  echo s:fontsize
+"  call <SID>set_guifont(s:fontname, s:fontsize)
+endfunction
+"==============================================================================
+"
+noremap <leader>+ :call <SID>inc_gui_font_size(2)<CR>
+noremap <leader>- :call <SID>inc_gui_font_size(-2)<CR>
+
   set guioptions-=m  "remove menu bar
   set guioptions-=T  "remove toolbar
   if has("win32")
+	call <SID>set_guifont(s:fontname, 0)
+	if &guifont != s:fontname
+		let s:fontname="Consolas"
+	endif
 	if &readonly
-	  set guifontwide=Microsoft\ Yahei\ Mono:h16
-	  set guifont=Microsoft\ Yahei\ Mono:h16
+	  let s:fontsize = 16
   else
 "      set guifont=Consolas:h14
-	  set guifont=Microsoft\ Yahei\ Mono:h14
+	  let s:fontsize = 16
       if fnamemodify(&shell,':t') !=? 'bash'
         exec 'source ' . expand('<sfile>:p:h') . '/bash_config.vim'
       endif
   endif
+  call <SID>set_guifont(s:fontname, s:fontsize)
   endif
 endif
 
