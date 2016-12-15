@@ -22,17 +22,20 @@ set fileencodings=utf-8,ucs-bom,cp936
 
 exec 'set runtimepath+=' . expand('<sfile>:p:h')
 
-if v:progname =~? 'gVIM'
+if has("gui_running")
   set guioptions-=m  "remove menu bar
   set guioptions-=T  "remove toolbar
-  if &readonly
-    set gfw="楷体":h16:b:cGB2312
-    set guifont=Courier\ New:b:h16
+  if has("win32")
+	if &readonly
+	  set guifontwide=Microsoft\ Yahei\ Mono:h16
+	  set guifont=Microsoft\ Yahei\ Mono:h16
   else
-    set guifont=Consolas:h14
-    if fnamemodify(&shell,':t') !=? 'bash'
-      exec 'source ' . expand('<sfile>:p:h') . '/bash_config.vim'
-    endif
+"      set guifont=Consolas:h14
+	  set guifont=Microsoft\ Yahei\ Mono:h14
+      if fnamemodify(&shell,':t') !=? 'bash'
+        exec 'source ' . expand('<sfile>:p:h') . '/bash_config.vim'
+      endif
+  endif
   endif
 endif
 
@@ -68,7 +71,7 @@ endif
 
 " status-line options
 "set statusline=\ %F%m%r%h\ %w\ \ CWD:\ %r%{CurDir()}%h\ \ \ Line:\ %l/%L:%c
-if ! &readonly
+if 1 && ! &readonly
   set laststatus=2
   set statusline=%F\ %m%r%h\ %w\ \ Line:\ %l/%L:%c
 endif
