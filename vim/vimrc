@@ -26,9 +26,8 @@ let s:fontsize=16
 
 if has("gui_running")
 "==============================================================================
-function! <SID>set_guifont(fontname, fontsize)
-  let ss = substitute(a:fontname, " ", "\\\\ ", "g")
-  if a:fontsize > 0 | let ss .=  ':h' . a:fontsize | endif
+function! <SID>set_guifont()
+  let ss = substitute(s:fontname, " ", "\\\\ ", "g") . ":h" . s:fontsize
   let action = 'set guifont=' . ss
   exec action
   let action = 'set guifontwide=' . ss
@@ -39,31 +38,29 @@ function! <SID>inc_gui_font_size(delta)
   let s:fontsize += a:delta
   if s:fontsize < 10 | let s:fontsize = 10 | endif
   if s:fontsize > 40 | let s:fontsize = 40 | endif
-  echo s:fontsize
-"  call <SID>set_guifont(s:fontname, s:fontsize)
+  call <SID>set_guifont()
 endfunction
 "==============================================================================
 "
-noremap <leader>+ :call <SID>inc_gui_font_size(2)<CR>
-noremap <leader>- :call <SID>inc_gui_font_size(-2)<CR>
+noremap <A-=> :call <SID>inc_gui_font_size(2)<CR>
+noremap <A--> :call <SID>inc_gui_font_size(-2)<CR>
 
   set guioptions-=m  "remove menu bar
   set guioptions-=T  "remove toolbar
   if has("win32")
-	call <SID>set_guifont(s:fontname, 0)
-	if &guifont != s:fontname
-		let s:fontname="Consolas"
-	endif
-	if &readonly
-	  let s:fontsize = 16
-  else
-"      set guifont=Consolas:h14
-	  let s:fontsize = 16
-      if fnamemodify(&shell,':t') !=? 'bash'
-        exec 'source ' . expand('<sfile>:p:h') . '/bash_config.vim'
-      endif
-  endif
-  call <SID>set_guifont(s:fontname, s:fontsize)
+    call <SID>set_guifont()
+    if &guifont != s:fontname . ":h" . s:fontsize
+        let s:fontname="Consolas"
+    endif
+    if &readonly
+      let s:fontsize = 16
+    else
+      let s:fontsize = 16
+    endif
+    if fnamemodify(&shell,':t') !=? 'bash'
+      exec 'source ' . expand('<sfile>:p:h') . '/bash_config.vim'
+    endif
+    call <SID>set_guifont()
   endif
 endif
 
@@ -99,7 +96,7 @@ endif
 
 " status-line options
 "set statusline=\ %F%m%r%h\ %w\ \ CWD:\ %r%{CurDir()}%h\ \ \ Line:\ %l/%L:%c
-if 1 && ! &readonly
+if ! &readonly
   set laststatus=2
   set statusline=%F\ %m%r%h\ %w\ \ Line:\ %l/%L:%c
 endif
@@ -127,7 +124,6 @@ autocmd FileType xml,htm,html set mps+=<:>
 
 " Maximize the windows if gvim is running
 autocmd GUIEnter * simalt ~x
-
 
 " Show tabs
 if v:progname != "vimdiff"
@@ -214,61 +210,61 @@ noremap  <Leader>vs   :let @/=<SID>nToggleWhites('^ \+')<CR>:set hls<CR>
 " Find next word from the start postition and return the position
 " of that word by expanding tabs to spaces.
 function! <SID>GetNextWordPosition(line, start)
-	let col = 0
-	let spaces = 0
-	let i = a:start
+    let col = 0
+    let spaces = 0
+    let i = a:start
     while 1
         let c = strpart(a:line, i, 1)
-		let i += 1
+        let i += 1
         if c == "\t"
-  			let col = (((col + 1) / &tabstop + 1) * &tabstop) - 1 | let spaces = 0
-		elseif c == " "
-			if spaces == &tabstop | let col += &tabstop | let spaces = 0 | else | let spaces += 1 | endif
-		else
-			break
+            let col = (((col + 1) / &tabstop + 1) * &tabstop) - 1 | let spaces = 0
+        elseif c == " "
+            if spaces == &tabstop | let col += &tabstop | let spaces = 0 | else | let spaces += 1 | endif
+        else
+            break
         endif
     endwhile
-	let col += spaces
-	return col + a:start
+    let col += spaces
+    return col + a:start
 endfunction
 
 function! <SID>GetColumnPositions(line)
-	let x = 0
-	let pos = []
-	while x < len(a:line)
-		let i = <SID>GetNextWordPosition(a:line, x)
-		call add(pos, i)
+    let x = 0
+    let pos = []
+    while x < len(a:line)
+        let i = <SID>GetNextWordPosition(a:line, x)
+        call add(pos, i)
 
-		while x < len(a:line)
-			let c = strpart(a:line, x, 1)
-			if c == "\t" || c == " " | let x += 1 | else | break | endif
-		endwhile
-		while x < len(a:line)
-			let c = strpart(a:line, x, 1)
-			if c != "\t" && c != " " | let x += 1 | else | break | endif
-		endwhile
-	endwhile
-	return pos
+        while x < len(a:line)
+            let c = strpart(a:line, x, 1)
+            if c == "\t" || c == " " | let x += 1 | else | break | endif
+        endwhile
+        while x < len(a:line)
+            let c = strpart(a:line, x, 1)
+            if c != "\t" && c != " " | let x += 1 | else | break | endif
+        endwhile
+    endwhile
+    return pos
 endfunction
 
 function! <SID>vAlignColumns() range
     let y = a:firstline
-	let positions = <SID>GetColumnPositions(getline(y))
+    let positions = <SID>GetColumnPositions(getline(y))
     while y <= a:lastline
-		let newline = ""
-		let i = 0
-		let fields = split(getline(y))
-		while i < len(fields)
-			let x = strlen(newline) + 1
-			let newline .= " "
-			while x < positions[i]
-				let newline .= " "
-				let x += 1
-			endwhile
-			let newline .= fields[i]
-			let i += 1
-		endwhile
-		echo newline
+        let newline = ""
+        let i = 0
+        let fields = split(getline(y))
+        while i < len(fields)
+            let x = strlen(newline) + 1
+            let newline .= " "
+            while x < positions[i]
+                let newline .= " "
+                let x += 1
+            endwhile
+            let newline .= fields[i]
+            let i += 1
+        endwhile
+        echo newline
         let y += 1
     endwhile
 endfunction
@@ -280,10 +276,10 @@ endfunction
 vnoremap <Leader>a :call <SID>vAlignColumns()<CR>
 
 function! <SID>vConvertTabsOrSpaces(toSpace) range
-	let &l:et = a:toSpace
-"	echo a:firstline
-"	echo a:lastline
-	exec a:firstline . "," . a:lastline . "retab!"
+    let &l:et = a:toSpace
+"   echo a:firstline
+"   echo a:lastline
+    exec a:firstline . "," . a:lastline . "retab!"
 endfunction
 
 " Convert tabs to spaces within selected range
@@ -303,9 +299,9 @@ nnoremap %es  :% call <SID>vConvertTabsOrSpaces(1)<CR>
 let s:ZERO_POINT = [0,0,0,0]
 
 function! <SID>SelectTexts(start, end)
-	call setpos('.', a:start)
-	normal! v
-	call setpos('.', a:end)
+    call setpos('.', a:start)
+    normal! v
+    call setpos('.', a:end)
 endfunction
 
 "=================================================================================================================
@@ -315,111 +311,111 @@ endfunction
 "=================================================================================================================
 function! <SID>vCopyColumn(fid) range
     let y = a:firstline
-	let s = ""
+    let s = ""
     while y <= a:lastline
-		let fields = split(getline(y))
-		if len(fields) > 0
-			let tmp = split(fields[a:fid], '=')
-			let s .= " " . tmp[0]
-		endif
-		let y += 1
+        let fields = split(getline(y))
+        if len(fields) > 0
+            let tmp = split(fields[a:fid], '=')
+            let s .= " " . tmp[0]
+        endif
+        let y += 1
     endwhile
-	let @" = s
-	return s
+    let @" = s
+    return s
 endfunction
 
 function! <SID>nPastePrintf(vars)
-	let sep = ','
-	let s1 = "printf(\""
-	let s2 = "    "
-	let fields = split(a:vars)
-	let i = 0
-	while i < len(fields)
-		let s1 .=  " " . fields[i] . " %u" . sep
-		let s2 .=  " " . fields[i] . ','
-		let i += 1
+    let sep = ','
+    let s1 = "printf(\""
+    let s2 = "    "
+    let fields = split(a:vars)
+    let i = 0
+    while i < len(fields)
+        let s1 .=  " " . fields[i] . " %u" . sep
+        let s2 .=  " " . fields[i] . ','
+        let i += 1
     endwhile
 
-	if len(fields) > 0
-		let s1 = s1[s1 : len(s1) - 2] . "\\n\",\n"
-		let s2 = s2[s2 : len(s2) - 2] . ");\n"
-		let @0 = s1 . s2
-		exec 'normal "0p'
-	endif
+    if len(fields) > 0
+        let s1 = s1[s1 : len(s1) - 2] . "\\n\",\n"
+        let s2 = s2[s2 : len(s2) - 2] . ");\n"
+        let @0 = s1 . s2
+        exec 'normal "0p'
+    endif
 endfunction
 
 autocmd FileType c,cpp,h vnoremap <buffer> <leader>'c :call <SID>vCopyColumn(0)<CR> |
 \ nnoremap <buffer> <leader>'x :call <SID>nPastePrintf(@")<CR>
 
 function! <SID>SelectMostOutterBlock()
-	let savedpos = getpos('.')
-	let endpos = savedpos
-	let retval = [ s:ZERO_POINT, s:ZERO_POINT ]
+    let savedpos = getpos('.')
+    let endpos = savedpos
+    let retval = [ s:ZERO_POINT, s:ZERO_POINT ]
 
-	while 1
-		normal ]}
-		let a = getpos('.')
-		if endpos == a | break | endif
-		let endpos = a
-	endwhile
+    while 1
+        normal ]}
+        let a = getpos('.')
+        if endpos == a | break | endif
+        let endpos = a
+    endwhile
 
-	if endpos != savedpos
-		normal %
-		let retval = [ getpos('.'), endpos ]
-	endif
+    if endpos != savedpos
+        normal %
+        let retval = [ getpos('.'), endpos ]
+    endif
 
-	call setpos('.', savedpos)
-	return retval
+    call setpos('.', savedpos)
+    return retval
 endfunction
 
 "# select the entrie function for c/c++ filetype: {...}
 function! <SID>SelectCFunction()
-	let savedpos = getpos('.')
-	let [ startpos, endpos ] = <SID>SelectMostOutterBlock()
+    let savedpos = getpos('.')
+    let [ startpos, endpos ] = <SID>SelectMostOutterBlock()
 
-	if startpos == s:ZERO_POINT | call setpos(".", savedpos) | return | endif
+    if startpos == s:ZERO_POINT | call setpos(".", savedpos) | return | endif
 
-	call setpos('.', startpos)
-	" move to starting )
-	if search(')', 'b') == 0 | call setpos(".", savedpos) | return | endif
-	" move to starting (
-	normal %
+    call setpos('.', startpos)
+    " move to starting )
+    if search(')', 'b') == 0 | call setpos(".", savedpos) | return | endif
+    " move to starting (
+    normal %
 
-	let pattern = '[A-Za-z_][A-Za-z_0-9]*'
-	if search(pattern, 'b') == 0 | call setpos(".", savedpos) | return | endif
-	while search(pattern, 'b', line('.')-1) > 0 | endwhile
+    let pattern = '[A-Za-z_][A-Za-z_0-9]*'
+    if search(pattern, 'b') == 0 | call setpos(".", savedpos) | return | endif
+    while search(pattern, 'b', line('.')-1) > 0 | endwhile
 
-	call <SID>SelectTexts(getpos('.'), endpos)
+    call <SID>SelectTexts(getpos('.'), endpos)
 endfunction
 
 function! <SID>InBlock(y, x, pos1, pos2)
-	if (a:y < a:pos1[1] || (a:y == a:pos1[1] && a:x < a:pos1[2])) ||
+    if (a:y < a:pos1[1] || (a:y == a:pos1[1] && a:x < a:pos1[2])) ||
 \      (a:y > a:pos2[1] || (a:y == a:pos2[1] && a:x > a:pos2[2]))
-	   return 0
-	endif
-	return 1
+       return 0
+    endif
+    return 1
 endfunction
 
 "# select the entrie function for c/c++ filetype: {...}
 function! <SID>SelectOneBlock(dir)
-	let savedpos = getpos('.')
-	let [ obs, obe ] = <SID>SelectMostOutterBlock()
+    let savedpos = getpos('.')
+    let [ obs, obe ] = <SID>SelectMostOutterBlock()
 
-	if search('\<\(if\|while\|for\|switch\|else\)\>', a:dir) == 0 | break | endif
-	let pos_s = getpos('.')
+    if search('\<\(if\|while\|for\|switch\|else\)\>', a:dir) == 0 | break | endif
+    let pos_s = getpos('.')
 
-	call search('(')
-	normal %
+    call search('(')
+    normal %
 
-	call search('{')
-	normal %
-	let pos_e = getpos('.')
+    call search('{')
+    normal %
+    let pos_e = getpos('.')
 
-	if !<SID>InBlock(pos_s[1], pos_s[2], obs, obe) || !<SID>InBlock(pos_e[1], pos_e[2], obs, obe)
-		call setpos('.', savedpos)
-		return
-	endif
-	call <SID>SelectTexts(pos_s, pos_e)
+    if !<SID>InBlock(pos_s[1], pos_s[2], obs, obe) || !<SID>InBlock(pos_e[1], pos_e[2], obs, obe)
+        call setpos('.', savedpos)
+        return
+    endif
+    call <SID>SelectTexts(pos_s, pos_e)
 endfunction
 
 autocmd FileType c,cpp,h |
@@ -458,17 +454,17 @@ nnoremap <Leader>U  viwU
 
 "# select the entrie function for make filetype: $(...) or ${...}
 function! <SID>SelectMakeFunction(magic)
-	if a:magic == 0 | let c1 = '{' | let c2 = '}' |
-\	else | let c1 = '(' | let c2 = ')' | endif
-	let savedpos = getpos('.')
-	let current_char = getline('.')[col('.')-1]
-	if current_char != c1
-		let [y, x] = searchpairpos(c1, '', c2, 'b')
-		if x == 0 && y == 0 | call setpos(".", savedpos) | return | endif
-	endif
-	let [y, x] = searchpos('[$]\s*' . c1, 'bn', line('.'))
-	if x == 0 && y == 0 | call setpos(".", savedpos) | return | endif
-	exec 'normal %v[' . c1 . 'F$'
+    if a:magic == 0 | let c1 = '{' | let c2 = '}' |
+\   else | let c1 = '(' | let c2 = ')' | endif
+    let savedpos = getpos('.')
+    let current_char = getline('.')[col('.')-1]
+    if current_char != c1
+        let [y, x] = searchpairpos(c1, '', c2, 'b')
+        if x == 0 && y == 0 | call setpos(".", savedpos) | return | endif
+    endif
+    let [y, x] = searchpos('[$]\s*' . c1, 'bn', line('.'))
+    if x == 0 && y == 0 | call setpos(".", savedpos) | return | endif
+    exec 'normal %v[' . c1 . 'F$'
 endfunction
 
 autocmd FileType make noremap <buffer> <F9> :call <SID>SelectMakeFunction(0)<CR> |
