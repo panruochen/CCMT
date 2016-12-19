@@ -315,7 +315,7 @@ function! <SID>vCopyColumn(fid) range
     while y <= a:lastline
         let fields = split(getline(y))
         if len(fields) > 0
-            let tmp = split(fields[a:fid], '=')
+            let tmp = split(fields[a:fid], '\s*[=;]\s*')
             let s .= " " . tmp[0]
         endif
         let y += 1
