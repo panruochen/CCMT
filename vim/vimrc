@@ -344,8 +344,9 @@ function! <SID>nPastePrintf(vars)
     endif
 endfunction
 
-autocmd FileType c,cpp,h vnoremap <buffer> <leader>'c :call <SID>vCopyColumn(0)<CR> |
-\ nnoremap <buffer> <leader>'x :call <SID>nPastePrintf(@")<CR>
+autocmd FileType c,cpp,h vnoremap <buffer> <leader>\1 :call <SID>vCopyColumn(0)<CR> |
+\ vnoremap <buffer> <leader>\2 :call <SID>vCopyColumn(1)<CR> |
+\ nnoremap <buffer> <leader>\x :call <SID>nPastePrintf(@")<CR>
 
 function! <SID>SelectMostOutterBlock()
     let savedpos = getpos('.')
