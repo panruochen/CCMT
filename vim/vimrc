@@ -264,7 +264,8 @@ function! <SID>vAlignColumns() range
             let newline .= fields[i]
             let i += 1
         endwhile
-        echo newline
+"        echo newline
+        call setline(y, newline)
         let y += 1
     endwhile
 endfunction
@@ -350,19 +351,21 @@ autocmd FileType c,cpp,h vnoremap <buffer> <leader>\1 :call <SID>vCopyColumn(0)<
 
 function! <SID>SelectMostOutterBlock()
     let savedpos = getpos('.')
-    let endpos = savedpos
     let retval = [ s:ZERO_POINT, s:ZERO_POINT ]
 
+    let lastpos = getpos('.')
     while 1
-        normal ]}
-        let a = getpos('.')
-        if endpos == a | break | endif
-        let endpos = a
+        "echom printf("Line %d : %s", line('.'),getline('.'))
+        if (&filetype == 'cpp'||&filetype=="h") && search('namespace\s\+\h[A-zA-z_:0-9]*\s*{', 'bcn', line(".")-1) > 0 | call setpos('.',lastpos) | break | endif
+        let lastpos = getpos('.')
+        normal [{
+        if getpos('.') == lastpos | break | endif
     endwhile
 
-    if endpos != savedpos
+    let lastpos = getpos('.')
+    if lastpos != savedpos
         normal %
-        let retval = [ getpos('.'), endpos ]
+        let retval = [ lastpos, getpos('.') ]
     endif
 
     call setpos('.', savedpos)
