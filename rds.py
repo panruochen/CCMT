@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-
 # Synchronize contents of a remote directory with its local counterpart
 
 import os, sys, subprocess
+import ConfigParser
 
 class SshAgent :
     def __init__(self, host) :
@@ -129,23 +129,42 @@ class Md5Agent :
 #===============================================================================
 #  The main function starts here
 #===============================================================================
-gv_local_ufs = os.environ['MY_UFS']
-if not gv_local_ufs :
-    print >> sys.stderr, "MY_UFS not set"
+config = ConfigParser.ConfigParser()
+
+section   = 'parameters'
+conf_dir  = None
+conf_file = None
+gv_local_dir   = None
+gv_remote_host = None
+gv_remote_dir  = None
+
+
+for conf_dir in ('.', os.environ['HOME']):
+    conf_file = conf_dir + '/' + '.rds.conf'
+    if os.path.exists(conf_file) :
+        config.read(conf_file)
+        gv_local_dir   = config.get(section, "local_dir", os.getcwd())
+        gv_remote_host = config.get(section, "remote_host")
+        gv_remote_dir  = config.get(section, "remote_dir")
+        break
+
+if not conf_file :
+    print >>sys.stderr, ".rds.conf is not found"
     exit(2)
 
-amss1 = os.environ['AMSS1']
-if not amss1 :
-    print >> sys.stderr, "AMSS1 not set"
+if (not gv_local_dir) or (not gv_remote_host) or (not gv_remote_dir) :
+    print >>sys.stderr, 'All of "local_dir", "remote_host" and "remote_dir" must be set in "' + file + '"'
     exit(2)
-gv_remote_ufs = amss1 + '/release/ufs'
-a = gv_remote_ufs.split(':')
-remote_host = a[0]
-remote_dir = a[1]
 
-ssh  = SshAgent(remote_host)
-sync = FileTransferAgent(ssh, remote_dir, gv_local_ufs)
-mmgr = Md5Agent(ssh, remote_dir, gv_local_ufs)
+#print "LOCAL_DIR:   %s" % gv_local_dir
+#print "REMOTE_HOST: %s" % gv_remote_host
+#print "REMOTE_DIR:  %s" % gv_remote_dir
+
+os.chdir(gv_local_dir)
+
+ssh  = SshAgent(gv_remote_host)
+sync = FileTransferAgent(ssh, gv_remote_dir, gv_local_dir)
+mmgr = Md5Agent(ssh, gv_remote_dir, gv_local_dir)
 
 d1,d2 = mmgr.get_files_to_be_updated()
 ##mmgr.dump(mmgr.local_md5)
@@ -153,7 +172,7 @@ d1,d2 = mmgr.get_files_to_be_updated()
 ##mmgr.dump(mmgr.remote_md5)
 #exit(0)
 
-print "Syncing %u files from remote server" % (len(d1) + len(d2))
+print "%u files to be transferred from %s" % (len(d1) + len(d2), gv_remote_host)
 if len(d1) + len(d2) > 0 :
 #    for x in d1 :
 #       sync.sync(FileTransferAgent.RDIFF, x, '/tmp')
