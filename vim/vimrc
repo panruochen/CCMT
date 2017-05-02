@@ -489,6 +489,7 @@ colorscheme evening2
 "# Auto commands
 autocmd BufEnter *.c,*.h,*.cpp,*.hpp,*.cc,*.cxx,*.S,*.s set noexpandtab
 autocmd BufEnter *.py set expandtab tabstop=4
+autocmd BufEnter *.md,*.MD,*.Md,*.mD set filetype=markdown
 
 "# Tabstop Setting
 set tabstop=4 softtabstop=4 shiftwidth=4

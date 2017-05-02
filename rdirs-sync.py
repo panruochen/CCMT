@@ -22,14 +22,14 @@ class SshAgent :
 
 class FileTransferAgent :
     RDIFF = 1
-    SCP   = 2
+    RSYNC   = 2
 
     def __init__(self, ssh, remote_dir, local_dir) :
         self.ssh = ssh
         self.remote_dir = remote_dir
         self.local_dir  = local_dir
 
-    def sync_by_rdiff(self, filename, remote_tmpdir) :
+    def copy_via_rdiff(self, filename, remote_tmpdir) :
         if not remote_tmpdir.endswith('/') :
             remote_tmpdir += '/'
         local_dir = self.local_dir
@@ -45,9 +45,9 @@ class FileTransferAgent :
         tmpFile = local_dir + 'a.Tmp'
 
         subprocess.check_call(['rdiff', 'signature', '-H', 'md4', sourceFile, localSigFile])
-        subprocess.check_call(['scp', '-q', localSigFile, ssh.host + ':' + remoteSigFile])
+        subprocess.check_call(['rsync', '-q', localSigFile, ssh.host + ':' + remoteSigFile])
         ssh.check_call('rdiff delta %s %s %s' % (remoteSigFile, destFile, remoteDelFile))
-        subprocess.check_call(['scp', '-q', ssh.host + ':' + remoteDelFile, localDelFile])
+        subprocess.check_call(['rsync', '-q', ssh.host + ':' + remoteDelFile, localDelFile])
         subprocess.check_call(['rdiff', 'patch', sourceFile, localDelFile, tmpFile])
 
         os.remove(sourceFile)
@@ -56,15 +56,15 @@ class FileTransferAgent :
         os.remove(localDelFile)
         ssh.check_call('rm -f %s %s' % (remoteDelFile, remoteSigFile))
 
-    def sync_by_scp(self, filename) :
-        subprocess.check_call(['scp', ssh.host + ':' + self.remote_dir + '/' + filename, self.local_dir + '/' + filename])
+    def copy_via_rsync(self, filename) :
+        subprocess.check_call(['rsync', ssh.host + ':' + self.remote_dir + '/' + filename, self.local_dir + '/' + filename])
 
     def sync(self, method, filename, remote_tmpdir) :
         sys.stdout.write("%-60s" % filename)
         if method == self.RDIFF :
-            self.sync_by_rdiff(filename, remote_tmpdir)
-        elif method == self.SCP :
-            self.sync_by_scp(filename)
+            self.copy_via_rdiff(filename, remote_tmpdir)
+        elif method == self.RSYNC :
+            self.copy_via_rsync(filename)
         sys.stdout.write('OK\n')
 
 class Md5Agent :
@@ -155,10 +155,12 @@ d1,d2 = mmgr.get_files_to_be_updated()
 
 print "Syncing %u files from remote server" % (len(d1) + len(d2))
 if len(d1) + len(d2) > 0 :
+#    for x in d1 :
+#       sync.sync(FileTransferAgent.RDIFF, x, '/tmp')
     for x in d1 :
-        sync.sync(FileTransferAgent.RDIFF, x, '/tmp')
+      sync.sync(FileTransferAgent.RSYNC, x, None)
     for x in d2 :
-        sync.sync(FileTransferAgent.SCP, x, None)
+      sync.sync(FileTransferAgent.RSYNC, x, None)
 
     d1,d2 = mmgr.get_files_to_be_updated()
     if len(d1) + len(d2) > 0 :
