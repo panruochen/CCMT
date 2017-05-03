@@ -2,7 +2,7 @@
 # Synchronize contents of a remote directory with its local counterpart
 
 import os, sys, subprocess
-import ConfigParser
+import ConfigParser, optparse
 
 class SshAgent :
     def __init__(self, host) :
@@ -129,8 +129,19 @@ class Md5Agent :
 #===============================================================================
 #  The main function starts here
 #===============================================================================
+# create the options parser
+optionsparser = optparse.OptionParser()
+
+# define the options we require/support
+optionsparser.add_option("-f", "--force", dest="force", help="Copy all remote subdirectories and files to local", default=False)
+optionsparser.add_option("-d", "--use-rdiff", dest="rdiff", help="Use rdiff for file transfer", default=False)
+
+# parse the options
+(options, args) = optionsparser.parse_args()
+
 config = ConfigParser.ConfigParser()
 
+rds_conf  = ".rds.conf"
 section   = 'parameters'
 conf_dir  = None
 conf_file = None
@@ -138,18 +149,18 @@ gv_local_dir   = None
 gv_remote_host = None
 gv_remote_dir  = None
 
-
 for conf_dir in ('.', os.environ['HOME']):
-    conf_file = conf_dir + '/' + '.rds.conf'
+    conf_file = conf_dir + '/' + rds_conf
     if os.path.exists(conf_file) :
         config.read(conf_file)
         gv_local_dir   = config.get(section, "local_dir", os.getcwd())
         gv_remote_host = config.get(section, "remote_host")
         gv_remote_dir  = config.get(section, "remote_dir")
         break
+    conf_file = None
 
 if not conf_file :
-    print >>sys.stderr, ".rds.conf is not found"
+    print >>sys.stderr, rds_conf + " is not found"
     exit(2)
 
 if (not gv_local_dir) or (not gv_remote_host) or (not gv_remote_dir) :
@@ -163,7 +174,7 @@ if (not gv_local_dir) or (not gv_remote_host) or (not gv_remote_dir) :
 os.chdir(gv_local_dir)
 
 ssh  = SshAgent(gv_remote_host)
-sync = FileTransferAgent(ssh, gv_remote_dir, gv_local_dir)
+fta  = FileTransferAgent(ssh, gv_remote_dir, gv_local_dir)
 mmgr = Md5Agent(ssh, gv_remote_dir, gv_local_dir)
 
 d1,d2 = mmgr.get_files_to_be_updated()
@@ -174,14 +185,17 @@ d1,d2 = mmgr.get_files_to_be_updated()
 
 print "%u files to be transferred from %s" % (len(d1) + len(d2), gv_remote_host)
 if len(d1) + len(d2) > 0 :
-#    for x in d1 :
-#       sync.sync(FileTransferAgent.RDIFF, x, '/tmp')
-    for x in d1 :
-      sync.sync(FileTransferAgent.RSYNC, x, None)
+    if options.rdiff:
+      for x in d1 :
+        fta.sync(FileTransferAgent.RDIFF, x, '/tmp')
+    else:
+      for x in d1 :
+        fta.sync(FileTransferAgent.RSYNC, x, None)
     for x in d2 :
-      sync.sync(FileTransferAgent.RSYNC, x, None)
+      fta.sync(FileTransferAgent.RSYNC, x, None)
 
+    # Verify
     d1,d2 = mmgr.get_files_to_be_updated()
     if len(d1) + len(d2) > 0 :
-        print >>sys.stderr, "Syncing failed !! %u files remain unsync"
+        print >>sys.stderr, "Synchronization fails! %u files remain."
         exit(2)
