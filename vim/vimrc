@@ -345,7 +345,8 @@ function! <SID>nPastePrintf(vars)
     endif
 endfunction
 
-autocmd FileType c,cpp,h vnoremap <buffer> <leader>\1 :call <SID>vCopyColumn(0)<CR> |
+autocmd FileType c,cc,cxx,cpp,h,hpp,hxx
+\ vnoremap <buffer> <leader>\1 :call <SID>vCopyColumn(0)<CR> |
 \ vnoremap <buffer> <leader>\2 :call <SID>vCopyColumn(1)<CR> |
 \ nnoremap <buffer> <leader>\x :call <SID>nPastePrintf(@")<CR>
 
@@ -422,7 +423,7 @@ function! <SID>SelectOneBlock(dir)
     call <SID>SelectTexts(pos_s, pos_e)
 endfunction
 
-autocmd FileType c,cpp,h |
+autocmd FileType c,cc,cxx,cpp,h,hpp,hxx
 \ noremap <buffer> <leader>\n :call <SID>SelectCFunction()<CR> |
 \ noremap <buffer> <leader>\b :call <SID>SelectOneBlock('b')<CR> |
 \ noremap <buffer> <leader>\f :call <SID>SelectOneBlock('')<CR>
