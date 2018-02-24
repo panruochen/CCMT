@@ -2,66 +2,70 @@
 "  Language setting
 " ================================
 if !has("gui_running") && v:progname == "vim"
-  if $LANG =~ "UTF-8"
-    let lang = "UTF-8"
-  elseif $LANG == "C.GBK"
-    let lang = "cp936"
-  endif
+    if $LANG =~ "UTF-8"
+        let lang = "UTF-8"
+    elseif $LANG == "C.GBK"
+        let lang = "cp936"
+    endif
 
-  if exists('lang')
-    exec "set encoding=" . lang
-    exec "set fileencoding=" . lang
-    exec "language messages " . $LANG
-    exec "set termencoding=" . lang
-    unlet lang
-  endif
+    if exists('lang')
+        exec "set encoding=" . lang
+        exec "set fileencoding=" . lang
+        exec "language messages " . $LANG
+        exec "set termencoding=" . lang
+        unlet lang
+    endif
 endif
 
 set fileencodings=utf-8,ucs-bom,cp936
 
 exec 'set runtimepath+=' . expand('<sfile>:p:h')
 
-let s:fontname="Microsoft Yahei Mono"
-let s:fontsize=16
-
 if has("gui_running")
-"==============================================================================
-function! <SID>set_guifont()
-  let ss = substitute(s:fontname, " ", "\\\\ ", "g") . ":h" . s:fontsize
-  let action = 'set guifont=' . ss
-  exec action
-  let action = 'set guifontwide=' . ss
-  exec action
+    let s:guiFontName = ""
+    let s:guiFontSize = 16
+
+function! <SID>SetGuiFont()
+    if s:guiFontName == ""
+        for i in [ "Microsoft Yahei Mono" ]
+            let j = $WINDIR . "/Fonts/" . i . ".ttf"
+            if filereadable(j)
+                let s:guiFontName = i
+                break
+            endif
+        endfor
+        if s:guiFontName == ""
+            let s:guiFontName = "Consolas"
+        endif
+    endif
+    let ss = substitute(s:guiFontName, " ", "_", "g") . ":h" . s:guiFontSize
+    exec 'set guifont=' . ss
+    exec 'set guifontwide=' . ss
 endfunction
 
-function! <SID>inc_gui_font_size(delta)
-  let s:fontsize += a:delta
-  if s:fontsize < 10 | let s:fontsize = 10 | endif
-  if s:fontsize > 40 | let s:fontsize = 40 | endif
-  call <SID>set_guifont()
+function! <SID>ChangeGuiFont(delta)
+    let s:guiFontSize += a:delta
+    if s:guiFontSize < 10 | let s:guiFontSize = 10 | endif
+    if s:guiFontSize > 40 | let s:guiFontSize = 40 | endif
+    call <SID>SetGuiFont()
 endfunction
-"==============================================================================
-"
-noremap <A-=> :call <SID>inc_gui_font_size(2)<CR>
-noremap <A--> :call <SID>inc_gui_font_size(-2)<CR>
 
-  set guioptions-=m  "remove menu bar
-  set guioptions-=T  "remove toolbar
-  if has("win32")
-    call <SID>set_guifont()
-    if &guifont != s:fontname . ":h" . s:fontsize
-        let s:fontname="Consolas"
+    set guioptions-=m  "remove menu bar
+    set guioptions-=T  "remove toolbar
+
+    if has("win32")
+        noremap <A-=> :call <SID>ChangeGuiFont(2)<CR>
+        noremap <A--> :call <SID>ChangeGuiFont(-2)<CR>
+
+        call <SID>SetGuiFont()
+
+        if &readonly
+          let s:guiFontSize = 16
+        endif
+        if fnamemodify(&shell,':t') !=? 'bash'
+            exec 'source ' . expand('<sfile>:p:h') . '/bash_config.vim'
+        endif
     endif
-    if &readonly
-      let s:fontsize = 16
-    else
-      let s:fontsize = 16
-    endif
-    if fnamemodify(&shell,':t') !=? 'bash'
-      exec 'source ' . expand('<sfile>:p:h') . '/bash_config.vim'
-    endif
-    call <SID>set_guifont()
-  endif
 endif
 
 set autoindent cindent nobackup hlsearch nocompatible noerrorbells
@@ -85,7 +89,7 @@ if executable("cscope") && has("cscope")
 "    set cst
 "    set csverb
 "    set cspc=3
-    let cs_file=findfile("cscope.out", ".;")
+    let cs_file = findfile("cscope.out", ".;")
     "echo cscope_file
     if !empty(cs_file) && filereadable(cs_file)
         let cs_pref=matchstr(cs_file, ".*/")
@@ -160,11 +164,8 @@ function! <SID>vInsertSpacesOfTab() range
 endfunction
 
 " Insert/Remove a `tab' of spaces (in visual mode)
-"vnoremap <BS>  :s/^\t//<CR>:let @/=""<CR><ESC>gv
-"vnoremap <TAB> :s/^/\t/<CR>:let @/=""<CR><ESC>gv
 vnoremap <BS>  :call <SID>vRemoveSpacesOfTab()<CR><ESC>gv
 vnoremap <TAB> :call <SID>vInsertSpacesOfTab()<CR><ESC>gv
-
 
 " Mapped keys for NERDTree plugin
 noremap <F3> :NERDTreeToggle<CR>
@@ -345,8 +346,7 @@ function! <SID>nPastePrintf(vars)
     endif
 endfunction
 
-autocmd FileType c,cc,cxx,cpp,h,hpp,hxx
-\ vnoremap <buffer> <leader>\1 :call <SID>vCopyColumn(0)<CR> |
+autocmd FileType c,cpp,h vnoremap <buffer> <leader>\1 :call <SID>vCopyColumn(0)<CR> |
 \ vnoremap <buffer> <leader>\2 :call <SID>vCopyColumn(1)<CR> |
 \ nnoremap <buffer> <leader>\x :call <SID>nPastePrintf(@")<CR>
 
@@ -423,7 +423,7 @@ function! <SID>SelectOneBlock(dir)
     call <SID>SelectTexts(pos_s, pos_e)
 endfunction
 
-autocmd FileType c,cc,cxx,cpp,h,hpp,hxx
+autocmd FileType c,cpp,h |
 \ noremap <buffer> <leader>\n :call <SID>SelectCFunction()<CR> |
 \ noremap <buffer> <leader>\b :call <SID>SelectOneBlock('b')<CR> |
 \ noremap <buffer> <leader>\f :call <SID>SelectOneBlock('')<CR>

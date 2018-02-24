@@ -2,7 +2,7 @@
 #=========================================================#
 #  A helper script to combining find+xargs for searching  #
 #=========================================================#
-#set -e -o pipefail
+set -e -o pipefail
 
 show_usage_and_exit()
 {
@@ -10,71 +10,125 @@ show_usage_and_exit()
 	exit $1
 }
 
-has_patterns=
+yz_getopt_long()
+{
+	local __short __long __name __value __i __blackhole __core_engine require_argument
+
+	__core_engine='case "$__value" in'$'\n'
+	while IFS=' ,'$'\t' read -r __short __long __name __value
+	do
+	    [ -n "$__short$__long" ] || continue
+
+		[ "${__short:2:1}" = '=' ] && require_argument='=' || require_argument=${__long:${#__long}-1}
+	    if [ "$require_argument" = "=" ]; then
+			[ -z "$__name" ] && __name=__blackhole && __value= || true
+			__short=${__short%=}
+			__long=${__long%=}
+	    fi
+
+		[ -n "$__short" -a -n "$__long" ] && __core_engine+="  $__short|$__long) " || __core_engine+="  $__short$__long) "
+	    if [ -z "$require_argument" ]; then
+	        if [ -n "$__name" ]; then
+				[ "${__name:0:1}" = '!' ] && __name="${__name:1}" && __i=0 || __i=1
+	            __core_engine+="$__name=$__i"
+	        fi
+	        __core_engine+=';;'$'\n'
+	    else
+			__core_engine+="require_argument='"
+			[ "$__value" = a ] && __core_engine+="$__name+=(\"\$__value\")';;" || \
+		        __core_engine+="$__name=\"\$__value\"';;"
+			__core_engine+=$'\n'
+	        if [ -n "$__name" -a -n "$__long" ]; then
+				__core_engine+="  $__long=*) $__name"
+				[ -z "$__value" ] && __core_engine+='=' || __core_engine+='+=('
+				__core_engine+="\"\${__value:${#__long}}\""
+				[ -z "$__value" ] || __core_engine+=')'
+				__core_engine+=$'\n'
+			fi
+	    fi
+	done <<< "$1"
+	__core_engine+="esac"
+
+	shift 1
+	__name="$1"
+	eval "$1=()"
+	shift 1
+	__i=0
+	require_argument=
+    while [ $((__i+=1)) -le ${#@} ]
+	do
+		eval __value='"${'$__i'}"'
+		if [ -n "$require_argument" ]; then
+            eval "$require_argument"
+            require_argument=
+            continue
+        fi
+
+        if [ -n "${__value##-*}" ]; then
+            eval "$__name+=(\"$__value\")"
+            continue
+        fi
+
+		eval "$__core_engine"
+	done
+
+#	echo "$__core_engine"
+}
+
+dump_vars() {
+	while [ -n "$1" ]
+	do
+		eval "echo -- $1 = \"\$$1\""
+	done
+}
+
+#=======================================================================================
+#=======================================================================================
+yz_getopt_long '-e=,,option_e,a
+-l,,option_l
+-i,,option_i
+-I,,option_I
+-w,,option_w
+-d,,option_d,a
+' parameters "$@"
+
 grep_options=()
 find_options=()
-target_dirs=()
-while getopts ":e:liId:c:" o ;
+dest_dirs=()
+
+index=0
+if [ ${#option_e[@]} -eq 0 ]; then
+	[ ${#parameters[@]} -gt 0 ] || show_usage_and_exit 1
+	[ ${option_w:-0} -eq 1 ] && grep_options+=(-e "\\<${parameters[0]}\\>") || grep_options+=(-e "${parameters[0]}")
+	index=1
+else
+	for i in "${option_e[@]}"
+	do
+		grep_options+=(-e "$i")
+	done
+fi
+for i in l i I
 do
-	case "${o}" in
-	e)
-		grep_options+=("-e" "${OPTARG}")
-		has_patterns=y
-		;;
-	l)
-		grep_options+=("-l")
-		;;
-	i)
-		grep_options+=("-i")
-		;;
-	I)
-		grep_options+=("-I") ## --binary-files=without-match
-		;;
-	d)
-		target_dirs+=("${OPTARG}")
-		;;
-	*)
-		show_usage_and_exit 0
-		;;
-	esac
+	v=option_$i
+	eval "[ \${$v:-0} -ne 1 ] || grep_options+=(-$i)"
 done
-shift $((OPTIND-1))
-##echo "$@" ; exit
+##echo -- "grep_options: ${grep_options[@]}"
 
-if [ -z "$has_patterns" ]; then
-	if [ -z "$1" ]; then
-		show_usage_and_exit 1
-	fi
-	grep_options+=("-e" "$1")
-	has_patterns=y
-	shift 1
-fi
+[ ${#parameters[@]} -gt $index ] || parameters+=("*")
 
-if [ -z "$find_options" ]; then
-	find_options+=("-name" "${1:-*}")
-fi
-
-#echo "${grep_options[*]}"
-#echo "${find_options[*]}"
-
-for a in "$@"
+while [ $index -lt ${#parameters[@]} ]
 do
-	if [ -n "$find_options" ]; then
-		find_options+=("-o")
-	fi
-	find_options+=("-name" "$a")
+	a="${parameters[$index]}"
+	[ ${#find_options[@]} -eq 0 ] || find_options+=("-o")
+	find_options+=(-name "$a")
+	index=$((index+1))
 done
+##echo -- "find_options: ${find_options[@]}"
 
-if [ ${#find_options[@]} -eq 0 -o -z "$has_patterns" ]; then
-	show_usage_and_exit 0
-fi
-
-if [ ${#target_dirs[*]} -eq 0 ]; then
-	target_dirs+=('')
-fi
+[ ${#dest_dirs[@]} -gt 0 ] || dest_dirs+=('')
 
 set +e
-for d in "${target_dirs[@]}"
+for d in "${dest_dirs[@]}"
 do
 	find $d \( -type f -a \( "${find_options[@]}" \) \) -print0| xargs -0 grep "${grep_options[@]}"
 done
