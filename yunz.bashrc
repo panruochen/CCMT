@@ -9,6 +9,13 @@ if [ -f ~/.dircolors ]; then
 fi
 
 #============================================#
+#   Load local settings
+#============================================#
+if [ -f ~/.localsettings.bashrc ]; then
+	source ~/.localsettings.bashrc
+fi
+
+#============================================#
 #   Aliases for easy usage
 #============================================#
 alias ls='\ls --color=auto'
@@ -25,10 +32,19 @@ yunzBashEnv_SetColor() {
     echo ${colors[$((RANDOM%${#colors[*]}))]}
 }
 
+yunzBashEnv_HOSTNAME=(${LOCALHOST:-$HOSTNAME}
+	$(ifconfig | grep -o 'inet addr:\([0-9]\{1,3\}\.\)\{3\}[0-9]\{1,3\}' | \
+	sed 's/^inet addr://' | head -n1))
+
+PROMPT_COMMAND='yunzBashEnv_GlobalCounter=$((yunzBashEnv_GlobalCounter+1));'
 export TERM=xterm-256color
 PS1=$(read -d $'\x00' -r a < /proc/$PPID/cmdline; a="${a##*/}";
   case "$a" in (vi|vim|view|vimdiff) echo "($a) ";; esac)
-export PS1+='\e[1;38;5;$(yunzBashEnv_SetColor)m\u@\h\e[0m \e[1;38;5;$(yunzBashEnv_SetColor)m\w\e[0m\n\$'
+#export PS1+='\e[1;38;5;$(yunzBashEnv_SetColor)m\u@\h\e[0m \e[1;38;5;$(yunzBashEnv_SetColor)m\w\e[0m\n\$'
+PS1+='\e[1;38;5;$(yunzBashEnv_SetColor)m'
+PS1+='${yunzBashEnv_HOSTNAME[$((yunzBashEnv_GlobalCounter%2))]}'
+PS1+='>\e[0m \e[1;38;5;$(yunzBashEnv_SetColor)m\w\e[0m\n\$'
+export PS1
 
 export PATH=$PATH:$(dirname ${BASH_SOURCE[0]})
 shopt -s checkjobs

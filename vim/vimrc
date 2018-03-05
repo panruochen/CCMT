@@ -54,8 +54,8 @@ endfunction
     set guioptions-=T  "remove toolbar
 
     if has("win32")
-        noremap <A-=> :call <SID>ChangeGuiFont(2)<CR>
-        noremap <A--> :call <SID>ChangeGuiFont(-2)<CR>
+        noremap <A-=> :call <SID>ChangeGuiFont(2)<Cr>
+        noremap <A--> :call <SID>ChangeGuiFont(-2)<Cr>
 
         call <SID>SetGuiFont()
 
@@ -74,8 +74,6 @@ set autoindent cindent nobackup hlsearch nocompatible noerrorbells
 set noignorecase incsearch
 
 set showmode ruler
-set shortmess=a
-set cmdheight=2
 
 syntax on
 filetype plugin indent on
@@ -102,7 +100,7 @@ endif
 "set statusline=\ %F%m%r%h\ %w\ \ CWD:\ %r%{CurDir()}%h\ \ \ Line:\ %l/%L:%c
 if ! &readonly
   set laststatus=2
-  set statusline=%F\ %m%r%h\ %w\ \ Line:\ %l/%L:%c
+  set statusline=%F\ %m%r%h\ %w\ \ Page\ %{line(\".\")/&lines+1},\ Line\ %l/%L,\ Col\ %c
 endif
 
 if exists("tags")
@@ -132,16 +130,17 @@ autocmd GUIEnter * simalt ~x
 " Show tabs
 if v:progname != "vimdiff"
 "  autocmd BufEnter *.c,*.h,*.cpp,*.hpp,*.cc,*.cxx,*.S,*.s set list listchars=tab:>-
+    set shortmess=a
 endif
 
 "==================="
 " Keymap setting
 "==================="
-inoremap <C-S> <ESC>:update<CR>:startinsert<CR>
-nnoremap <C-S> :update<CR>
+inoremap <C-S> <Esc>:update<Cr>:startinsert<Cr>
+nnoremap <C-S> :update<Cr>
 
-inoremap <C-F4>  <ESC>:xall<CR>
-nnoremap <C-F4>  :xall<CR>
+inoremap <C-F4>  <Esc>:xall<Cr>
+nnoremap <C-F4>  :xall<Cr>
 
 " Remove spaces of one tabstop
 function! <SID>vRemoveSpacesOfTab() range
@@ -164,11 +163,11 @@ function! <SID>vInsertSpacesOfTab() range
 endfunction
 
 " Insert/Remove a `tab' of spaces (in visual mode)
-vnoremap <BS>  :call <SID>vRemoveSpacesOfTab()<CR><ESC>gv
-vnoremap <TAB> :call <SID>vInsertSpacesOfTab()<CR><ESC>gv
+vnoremap <script> <silent> <BS>  :call <SID>vRemoveSpacesOfTab()<Cr><Esc>gv
+vnoremap <script> <silent> <Tab> :call <SID>vInsertSpacesOfTab()<Cr><Esc>gv
 
 " Mapped keys for NERDTree plugin
-noremap <F3> :NERDTreeToggle<CR>
+noremap <F3> :NERDTreeToggle<Cr>
 "#let NERDTreeIgnore = ['\.o$\|\.ko$']
 let NERDTreeIgnore = ['\.o$', '\~$', '\.ko$', '\.mod\.c$', 'modules\.order$', 'modules\.builtin$']
 "
@@ -182,10 +181,10 @@ function! <SID>SwitchTabStop(ts)
     let &shiftwidth  = a:ts
 endfunction
 
-noremap  <Leader>t4  :call <SID>SwitchTabStop(4)<CR>
-noremap  <Leader>t8  :call <SID>SwitchTabStop(8)<CR>
+noremap <script> <silent> <Leader>t4  :call <SID>SwitchTabStop(4)<Cr>
+noremap <script> <silent> <Leader>t8  :call <SID>SwitchTabStop(8)<Cr>
 " Comment the selected line
-nnoremap <Leader>tc  :s/^\(\s*\)\([^#]\)/\1#\2/<CR>:let @/=''<CR>
+nnoremap <Leader>tc  :s/^\(\s*\)\([^#]\)/\1#\2/<Cr>:let @/=''<Cr>
 
 let s:whites_visible = 0
 
@@ -196,7 +195,7 @@ function! <SID>nToggleWhites(pattern)
         let s:whites_visible = ! s:whites_visible
     endif
     if s:whites_visible
-        exec 'normal! /' . a:pattern . "/\<CR>"
+        exec 'normal! /' . a:pattern . "/\<Cr>"
         let @/ = a:pattern
     else
         let @/ = ''
@@ -204,9 +203,9 @@ function! <SID>nToggleWhites(pattern)
     return @/
 endfunction
 
-noremap  <Leader>vt   :let @/=<SID>nToggleWhites('^\t\+')<CR>:set hls<CR>
-noremap  <Leader>vta  :let @/=<SID>nToggleWhites('\t\+')<CR>:set hls<CR>
-noremap  <Leader>vs   :let @/=<SID>nToggleWhites('^ \+')<CR>:set hls<CR>
+noremap <script> <silent> <Leader>vt   :let @/=<SID>nToggleWhites('^\t\+')<Cr>:set hls<Cr>
+noremap <script> <silent> <Leader>vta  :let @/=<SID>nToggleWhites('\t\+')<Cr>:set hls<Cr>
+noremap <script> <silent> <Leader>vs   :let @/=<SID>nToggleWhites('^ \+')<Cr>:set hls<Cr>
 
 " Find next word from the start postition and return the position
 " of that word by expanding tabs to spaces.
@@ -271,11 +270,11 @@ function! <SID>vAlignColumns() range
     endwhile
 endfunction
 
-"""nnoremap <F9> :call <SID>GetNextWordPosition(getline("."),0)<CR>
-"""nnoremap <F9> :echo <SID>GetColumnPositions(getline("."))<CR>
+"""nnoremap <F9> :call <SID>GetNextWordPosition(getline("."),0)<Cr>
+"""nnoremap <F9> :echo <SID>GetColumnPositions(getline("."))<Cr>
 
 " Align fields of selected lines based on the first line
-vnoremap <Leader>a :call <SID>vAlignColumns()<CR>
+vnoremap <Leader>a :call <SID>vAlignColumns()<Cr>
 
 function! <SID>vConvertTabsOrSpaces(toSpace) range
     let &l:et = a:toSpace
@@ -284,18 +283,18 @@ function! <SID>vConvertTabsOrSpaces(toSpace) range
     exec a:firstline . "," . a:lastline . "retab!"
 endfunction
 
-" Convert tabs to spaces within selected range
-vnoremap <Leader>et  :call <SID>vConvertTabsOrSpaces(0)<CR>
-" Convert spaces to tabs within selected range
-vnoremap <Leader>es  :call <SID>vConvertTabsOrSpaces(1)<CR>
-
 " Convert tabs to spaces within the entire file
-nnoremap %et  :% call <SID>vConvertTabsOrSpaces(0)<CR>
+nnoremap <script> <silent>  %et :% call <SID>vConvertTabsOrSpaces(0)<Cr>
 " Convert spaces to tabs within the entire file
-nnoremap %es  :% call <SID>vConvertTabsOrSpaces(1)<CR>
+nnoremap <script> <silent>  %es :% call <SID>vConvertTabsOrSpaces(1)<Cr>
 
-"nnoremap <Leader>et  :call <SID>nConvertTabsOrSpaces(0)<CR>
-"nnoremap <Leader>es  :call <SID>nConvertTabsOrSpaces(1)<CR>
+" Convert tabs to spaces within selected range
+vnoremap <script> <silent> <Leader>et  :call <SID>vConvertTabsOrSpaces(0)<Cr>
+nnoremap <script> <silent> <Leader>et  :. call <SID>vConvertTabsOrSpaces(0)<Cr>
+
+" Convert spaces to tabs within selected range
+vnoremap <script> <silent> <Leader>es  :call <SID>vConvertTabsOrSpaces(1)<Cr>
+nnoremap <script> <silent> <Leader>es  :. call <SID>vConvertTabsOrSpaces(1)<Cr>
 "
 
 let s:ZERO_POINT = [0,0,0,0]
@@ -346,9 +345,9 @@ function! <SID>nPastePrintf(vars)
     endif
 endfunction
 
-autocmd FileType c,cpp,h vnoremap <buffer> <leader>\1 :call <SID>vCopyColumn(0)<CR> |
-\ vnoremap <buffer> <leader>\2 :call <SID>vCopyColumn(1)<CR> |
-\ nnoremap <buffer> <leader>\x :call <SID>nPastePrintf(@")<CR>
+autocmd FileType c,cpp,h vnoremap <script> <silent> <buffer> <leader>\1 :call <SID>vCopyColumn(0)<Cr> |
+\ vnoremap <script> <silent> <buffer> <leader>\2 :call <SID>vCopyColumn(1)<Cr> |
+\ nnoremap <script> <silent> <buffer> <leader>\x :call <SID>nPastePrintf(@")<Cr>
 
 function! <SID>SelectMostOutterBlock()
     let savedpos = getpos('.')
@@ -357,7 +356,10 @@ function! <SID>SelectMostOutterBlock()
     let lastpos = getpos('.')
     while 1
         "echom printf("Line %d : %s", line('.'),getline('.'))
-        if (&filetype == 'cpp'||&filetype=="h") && search('namespace\s\+\h[A-zA-z_:0-9]*\s*{', 'bcn', line(".")-1) > 0 | call setpos('.',lastpos) | break | endif
+        if (&filetype == 'cpp'||&filetype=="h") && search('namespace\s\+\h[A-zA-z_:0-9]*\s*{', 'bcn', line(".")-1) > 0
+			call setpos('.',lastpos)
+			break
+		endif
         let lastpos = getpos('.')
         normal [{
         if getpos('.') == lastpos | break | endif
@@ -423,37 +425,35 @@ function! <SID>SelectOneBlock(dir)
     call <SID>SelectTexts(pos_s, pos_e)
 endfunction
 
-autocmd FileType c,cpp,h |
-\ noremap <buffer> <leader>\n :call <SID>SelectCFunction()<CR> |
-\ noremap <buffer> <leader>\b :call <SID>SelectOneBlock('b')<CR> |
-\ noremap <buffer> <leader>\f :call <SID>SelectOneBlock('')<CR>
+autocmd FileType c,cpp,h
+\ noremap <buffer> <leader>\n :call <SID>SelectCFunction()<Cr> |
+\ noremap <buffer> <leader>\b :call <SID>SelectOneBlock('b')<Cr> |
+\ noremap <buffer> <leader>\f :call <SID>SelectOneBlock('')<Cr>
 
 "=================================================================================================================
 
-" Use <TAB> key to switch between windows in NORMAL MODE
-nnoremap <TAB> <C-W>W
+" Use <Tab> key to switch between windows in NORMAL MODE
+nnoremap <Tab> <C-W>W
 
 "# Quick Replace
-nnoremap <Leader>s   :%s/\<<C-r><C-w>\>//g<Left><Left>
-nnoremap <Leader>S   :%s/\<<C-r><C-w>\>//g<Left><Left>
-vnoremap <Leader>s   y:/\<<C-r>"\>//g<Left><Left>
-vnoremap <Leader>S   y:/\<<C-r>"\>//g<Left><Left>
+nnoremap <Leader>s  :%s/\<<C-r><C-w>\>//g<Left><Left>
+vnoremap <Leader>s  y:/\<<C-r>"\>//g<Left><Left>
 
 "# Display registers
-nnoremap <Leader>r   :registers<CR>
+nnoremap <silent> <Leader>r  :registers<Cr>
 
 "# Toggle line number
-nnoremap <Leader>]   :let &number=!&number <bar> let &relativenumber=0 <CR>
-nnoremap <Leader>[   :let &relativenumber=!&relativenumber <bar> let &number=0 <CR>
+nnoremap <silent> <Leader>]  :let &number=!&number <Bar> let &relativenumber=0 <Cr>
+nnoremap <silent> <Leader>[  :let &relativenumber=!&relativenumber <Bar> let &number=0 <Cr>
 
 "# Hide search highlighting
-nnoremap <Leader>0   :let @/ = ''<CR>
+nnoremap <silent> <Leader>0  :let @/ = ''<Cr>
 
 "# Join two lines
 nnoremap K   kJ
 
-nnoremap <Leader>p0 :set nopaste<cr>
-nnoremap <Leader>p9 :set paste<cr>
+nnoremap <silent> <Leader>p0 :set nopaste<cr>
+nnoremap <silent> <Leader>p9 :set paste<cr>
 nnoremap <Leader>u  viwu
 nnoremap <Leader>U  viwU
 
@@ -472,8 +472,31 @@ function! <SID>SelectMakeFunction(magic)
     exec 'normal %v[' . c1 . 'F$'
 endfunction
 
-autocmd FileType make noremap <buffer> <F9> :call <SID>SelectMakeFunction(0)<CR> |
-\ noremap <buffer> <F10> :call <SID>SelectMakeFunction(1)<CR>
+autocmd FileType make
+\ noremap <silent> <script> <buffer> <F9> :call <SID>SelectMakeFunction(0)<Cr> |
+\ noremap <silent> <script> <buffer> <F10> :call <SID>SelectMakeFunction(1)<Cr>
+
+" Read the project file
+"
+function! <SID>OpenProject()
+	let file = findfile(".project", ".;")
+	if filereadable(file)
+		let y = readfile(file)
+		for x in y
+			let fx = split(x)
+			if len(fx) == 0 | continue | endif
+			if fx[1][0] == '"'
+				let file = fx[1]
+				let line = fx[3]
+			elseif fx[2][0] == '"'
+				let file = fx[2]
+				let line = fx[4]
+			endif
+			echo file . "  :  " . line
+		endfor
+	endif
+endfunction
+nmap <script> <silent> <C-P> :call <SID>OpenProject()<Cr>
 
 set backspace=indent,eol,start
 
@@ -482,15 +505,10 @@ set backspace=indent,eol,start
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 colorscheme evening2
 
-"hi ContTabs ctermbg=yellow guibg=yellow
-"hi LineNr guifg=purple gui=underline
-"hi LineNr ctermfg=Magenta cterm=underline
-"hi VertSplit ctermfg=DarkGrey ctermbg=DarkGrey guibg=fg guifg=fg                                                        |
-
 "# Auto commands
 autocmd BufEnter *.c,*.h,*.cpp,*.hpp,*.cc,*.cxx,*.S,*.s set noexpandtab
 autocmd BufEnter *.py set expandtab tabstop=4
-autocmd BufEnter *.md,*.MD,*.Md,*.mD set filetype=markdown
+autocmd BufEnter *.md set filetype=markdown
 
 "# Tabstop Setting
 set tabstop=4 softtabstop=4 shiftwidth=4

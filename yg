@@ -96,17 +96,25 @@ grep_options=()
 find_options=()
 dest_dirs=()
 
+#echo "option_w: ${option_w}" >&2
+
 index=0
+if [ ${option_w:=0} -eq 1 ]; then
+	lx="\\<"
+	rx="\\>"
+fi
 if [ ${#option_e[@]} -eq 0 ]; then
 	[ ${#parameters[@]} -gt 0 ] || show_usage_and_exit 1
-	[ ${option_w:-0} -eq 1 ] && grep_options+=(-e "\\<${parameters[0]}\\>") || grep_options+=(-e "${parameters[0]}")
+	grep_options+=(-e "$lx${parameters[0]}$rx")
 	index=1
 else
 	for i in "${option_e[@]}"
 	do
-		grep_options+=(-e "$i")
+		grep_options+=(-e "$lx$i$rx")
 	done
 fi
+unset lx rx
+
 for i in l i I
 do
 	v=option_$i
@@ -130,6 +138,6 @@ done
 set +e
 for d in "${dest_dirs[@]}"
 do
-	find $d \( -type f -a \( "${find_options[@]}" \) \) -print0| xargs -0 grep "${grep_options[@]}"
+	find $d \( -type f -a \( "${find_options[@]}" \) \) -print0 | xargs -0 grep --color=auto "${grep_options[@]}"
 done
 
