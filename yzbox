@@ -1,0 +1,28 @@
+#!/usr/bin/env python
+# vim: set syn=python et :
+#============================================================
+#
+#  Pan Ruochen <ijkxyz@msn.com>
+#
+#============================================================
+import os, sys, re, struct, subprocess, optparse
+
+if len(sys.argv) == 1 :
+    exit(0)
+
+cwd  = os.path.dirname(sys.argv[0])
+func = sys.argv[1]
+
+pyscripts_dir = os.path.join(cwd, 'pyscripts')
+pyfile = os.path.join(pyscripts_dir, func) + '.py'
+
+if not os.path.exists(pyfile) :
+    print >>sys.stderr, "%s not exists" % func
+    exit(1)
+
+sys.path.append(pyscripts_dir)
+
+exec '''import %s
+%s.%s_main()
+''' % (func, func, func)
+
