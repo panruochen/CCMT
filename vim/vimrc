@@ -276,11 +276,46 @@ endfunction
 " Align fields of selected lines based on the first line
 vnoremap <Leader>a :call <SID>vAlignColumns()<Cr>
 
+function! <SID>GetLeadingSpaceWidth(line)
+	let width = 0
+	let i = 0
+	let n = 0
+	while i < strlen(a:line)
+		if a:line[i] == ' '
+			let width += 1
+			let n = (n + 1) % &tabstop
+		elseif a:line[i] == "\t"
+			let width = (width + &tabstop) / &tabstop * &tabstop
+			let n = 0
+		else
+			break
+		endif
+		let i += 1
+	endwhile
+	return [width, strpart(a:line,i)]
+endfunction
+
 function! <SID>vConvertTabsOrSpaces(toSpace) range
-    let &l:et = a:toSpace
-"   echo a:firstline
-"   echo a:lastline
-    exec a:firstline . "," . a:lastline . "retab!"
+    let ln = a:firstline
+    while ln <= a:lastline
+		let line = getline(ln)
+    	let x = <SID>GetLeadingSpaceWidth(line)
+    	let newline = ''
+    	let width = x[0]
+        if ! a:toSpace
+        	while width >= &tabstop
+        		let newline .= "\t"
+        		let width -= &tabstop
+        	endwhile
+        endif
+        while width > 0
+    		let newline .= ' '
+    		let width -= 1
+    	endwhile
+    	let newline .= x[1]
+        call setline(ln, newline)
+        let ln += 1
+    endwhile
 endfunction
 
 " Convert tabs to spaces within the entire file
@@ -456,6 +491,8 @@ nnoremap <silent> <Leader>p0 :set nopaste<cr>
 nnoremap <silent> <Leader>p9 :set paste<cr>
 nnoremap <Leader>u  viwu
 nnoremap <Leader>U  viwU
+
+vnoremap y ygv<Esc>
 
 "# select the entrie function for make filetype: $(...) or ${...}
 function! <SID>SelectMakeFunction(magic)
