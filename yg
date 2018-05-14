@@ -133,7 +133,8 @@ do
 done
 ##echo -- "find_options: ${find_options[@]}"
 
-[ ${#dest_dirs[@]} -gt 0 ] || dest_dirs+=('')
+[ ${#option_d[@]} -gt 0 ] && dest_dirs=(${option_d[@]})
+[ ${#dest_dirs[@]} -gt 0 ] || dest_dirs=('')
 
 set +e
 for d in "${dest_dirs[@]}"
