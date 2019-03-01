@@ -277,42 +277,42 @@ endfunction
 vnoremap <Leader>a :call <SID>vAlignColumns()<Cr>
 
 function! <SID>GetLeadingSpaceWidth(line)
-	let width = 0
-	let i = 0
-	let n = 0
-	while i < strlen(a:line)
-		if a:line[i] == ' '
-			let width += 1
-			let n = (n + 1) % &tabstop
-		elseif a:line[i] == "\t"
-			let width = (width + &tabstop) / &tabstop * &tabstop
-			let n = 0
-		else
-			break
-		endif
-		let i += 1
-	endwhile
-	return [width, strpart(a:line,i)]
+    let width = 0
+    let i = 0
+    let n = 0
+    while i < strlen(a:line)
+        if a:line[i] == ' '
+            let width += 1
+            let n = (n + 1) % &tabstop
+        elseif a:line[i] == "\t"
+            let width = (width + &tabstop) / &tabstop * &tabstop
+            let n = 0
+        else
+            break
+        endif
+        let i += 1
+    endwhile
+    return [width, strpart(a:line,i)]
 endfunction
 
 function! <SID>vConvertTabsOrSpaces(toSpace) range
     let ln = a:firstline
     while ln <= a:lastline
-		let line = getline(ln)
-    	let x = <SID>GetLeadingSpaceWidth(line)
-    	let newline = ''
-    	let width = x[0]
+        let line = getline(ln)
+        let x = <SID>GetLeadingSpaceWidth(line)
+        let newline = ''
+        let width = x[0]
         if ! a:toSpace
-        	while width >= &tabstop
-        		let newline .= "\t"
-        		let width -= &tabstop
-        	endwhile
+            while width >= &tabstop
+                let newline .= "\t"
+                let width -= &tabstop
+            endwhile
         endif
         while width > 0
-    		let newline .= ' '
-    		let width -= 1
-    	endwhile
-    	let newline .= x[1]
+            let newline .= ' '
+            let width -= 1
+        endwhile
+        let newline .= x[1]
         call setline(ln, newline)
         let ln += 1
     endwhile
@@ -392,9 +392,9 @@ function! <SID>SelectMostOutterBlock()
     while 1
         "echom printf("Line %d : %s", line('.'),getline('.'))
         if (&filetype == 'cpp'||&filetype=="h") && search('namespace\s\+\h[A-zA-z_:0-9]*\s*{', 'bcn', line(".")-1) > 0
-			call setpos('.',lastpos)
-			break
-		endif
+            call setpos('.',lastpos)
+            break
+        endif
         let lastpos = getpos('.')
         normal [{
         if getpos('.') == lastpos | break | endif
@@ -534,6 +534,18 @@ function! <SID>OpenProject()
 	endif
 endfunction
 nmap <script> <silent> <C-P> :call <SID>OpenProject()<Cr>
+
+function! <SID>SetDotConfig(on) range
+	if a:on
+		silent! exec a:firstline . "," a:lastline . 's/^\s*#\s*\([A-Z_a-z][A-Z_a-z0-9]*\)\(=*n\| is not set\).*$/\1=y/'
+	else
+		silent! exec a:firstline . "," a:lastline . 's/^\s*\([A-Z_a-z][A-Z_a-z0-9]*\)=y.*$/# \1 is not set/'
+	endif
+endfunction
+vnoremap <script> <silent> <Leader>n :call <SID>SetDotConfig(0)<Cr>
+vnoremap <script> <silent> <Leader>y :call <SID>SetDotConfig(1)<Cr>
+nnoremap <script> <silent> <Leader>n :call <SID>SetDotConfig(0)<Cr>
+nnoremap <script> <silent> <Leader>y :call <SID>SetDotConfig(1)<Cr>
 
 set backspace=indent,eol,start
 set autoread
