@@ -1,5 +1,6 @@
-#!/bin/bash
-# vim: set filetype=sh:
+#!/bin/zsh
+# vim: set filetype=zsh:
+setopt KSH_ARRAYS
 
 #============================================#
 #   set up LS_COLORS
@@ -11,8 +12,8 @@ fi
 #============================================#
 #   Load local settings
 #============================================#
-if [ -f ~/.localsettings.bashrc ]; then
-	source ~/.localsettings.bashrc
+if [ -f ~/.localsettings.zshrc ]; then
+	source ~/.localsettings.zhrc
 fi
 
 #============================================#
@@ -23,21 +24,6 @@ alias cp='\cp -i'
 alias rm='\rm -i'
 alias mv='\mv -i'
 
-echocolor() {
-	echo -e "\\e[1;38;5;${2:-255}m$1\\e[0m"
-}
-
-yunzBashEnv_SetColor() {
-    colors=(196 46 226 69 169 39 254 129 136 184 202)
-    echo ${colors[$((RANDOM%${#colors[*]}))]}
-}
-
-yunzBashEnv_HOSTNAME=(${LOCALHOST:-$HOSTNAME})
-if [ -x "$(which ifconfig 2>/dev/null)" ]; then
-	yunzBashEnv_HOSTNAME+=($(ifconfig | grep -o 'inet addr:\([0-9]\{1,3\}\.\)\{3\}[0-9]\{1,3\}' | \
-		sed 's/^inet addr://' | head -n1))
-fi
-
 is_sshd() {
 	if echo "$1" | grep -q -s '^.*/sshd\>'; then
 		[ -x "$1" ] && return 0
@@ -46,13 +32,12 @@ is_sshd() {
 }
 
 find_parent_process_by_name() {
-	local pid pn
+	local pid cmd
 
 	pid=$PPID
 	while [ $pid -ne 1 ]; do
-# IFS=$'\x00' read -a array # THIS DOES NOT WORK, WHY??
-		read -d $'\x00' pn < /proc/$pid/cmdline
-		if "$1" "$pn"; then
+		read -d $'\x00' cmd < /proc/$pid/cmdline
+		if "$1" "${cmd}"; then
 			return 0
 		fi
 		if [ -r /proc/$pid/ppid ]; then
@@ -74,8 +59,8 @@ else
 fi
 unset -f find_parent_process_by_name is_sshd
 
-function dye_texts() {
-	echo -E $'\e[1;38;5;'$1m"$2"$'\e[0m'
+function echocolor() {
+	echo $'\e[1;38;5;'$1m"$2"$'\e[0m'
 }
 
 prompt_colors=(196 46 226 69 169 39 254 129 136 184 202)
@@ -83,21 +68,27 @@ precmd() {
 	local i j n
 	n=${#prompt_colors[*]}
 	PS1=$'\n'
-	i=$((RANDOM%n))
 	j="${ON_REMOTE:- }"
 	if [ $SHLVL -gt 1 ]; then
 		j+="^"
 	else
 		j+=' '
 	fi
+	i=$((RANDOM%n))
 	if [ -z ${param/ /} ]; then
-		PS1+=$(dye_texts ${prompt_colors[$i]} "$j")' '
+		PS1+=$(echocolor ${prompt_colors[$i]} "$j")' '
 	else
 		PS1+='   '
 	fi
-	i=$((RANDOM%n))
-	PS1+=$(dye_texts ${prompt_colors[$i]} '\w')
-	PS1+=$'\n''\$ '
+
+	if [ -n "$ANDROID_SERIAL" ] && export | grep -s -q '\<ANDROID_SERIAL='; then
+		i=$(((i+1)%n))
+		PS1+=$(echocolor ${prompt_colors[$i]} "$ANDROID_SERIAL")' '
+	fi
+
+	i=$(((i+1)%n))
+	PS1+=$(echocolor ${prompt_colors[$i]} "%~")
+	PS1+=$'\n%# '
 	i=$((RANDOM%n))
 	j=$((RANDOM%n))
 	if [[ $i != $j ]]; then
@@ -122,13 +113,13 @@ yunz_make_easy() {
 	done <<< "$MY_FRIENDLY_SERVERS"
 }
 
-PROMPT_COMMAND='precmd'
+autoload -Uz chpwd_recent_dirs cdr add-zsh-hook
+add-zsh-hook chpwd chpwd_recent_dirs
+zstyle ':completion:*:*:cdr:*:*' menu selection
+
 export TERM=xterm-256color
-PS1_PARENT_PROCESS=$(read -d $'\x00' -r a < /proc/$PPID/cmdline; a="${a##*/}";
-  case "$a" in (vi|vim|view|vimdiff) echo "($a) ";; esac)
 
 yunz_make_easy
-unset yunz_make_easy
+unset -f yunz_make_easy
 
-export PATH=$PATH:$(dirname ${BASH_SOURCE[0]})
-shopt -s checkjobs
+export PATH=$PATH:$(cd $(dirname ${(%):-%x}); pwd)
