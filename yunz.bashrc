@@ -18,8 +18,8 @@ yunzBashEnv_SetPS1() {
 	yunzBashEnv_GlobalCounter=$((yunzBashEnv_GlobalCounter+1))
 }
 
-declare -r PROMPT_WD='\w'
-declare -r PROMPT_ID='\$'
+PROMPT_WD='\w'
+PROMPT_ID='\$'
 
 source $(dirname ${BASH_SOURCE[0]})/common.zshrc
 

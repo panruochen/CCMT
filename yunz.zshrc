@@ -4,8 +4,8 @@
 __yunzrc_dir=$(cd $(dirname ${(%):-%x}); pwd)
 export PATH=$PATH:$__yunzrc_dir
 
-declare -r PROMPT_WD='%~'
-declare -r PROMPT_ID='%#'
+PROMPT_WD='%~'
+PROMPT_ID='%#'
 
 setopt KSH_ARRAYS
 source $__yunzrc_dir/common.zshrc

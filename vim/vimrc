@@ -120,7 +120,19 @@ autocmd BufReadPost *
   \   exec "normal! g`\"" |
   \ endif
 
-autocmd BufWritePre *  if &modified && expand("%:e") != "md" | let l = line(".") | let c = col(".") | %s/\s\+$//e | call cursor(l, c) | endif
+function <SID>RemoveTrailingSpacesAndSave()
+	let oldregex = @/
+	if &modified && expand("%:e") != "md"
+		let l = line(".")
+		let c = col(".")
+		exec '%s/\s\+$//e'
+		call cursor(l, c)
+	endif
+	let @/ = oldregex
+endfunction
+
+autocmd BufWritePre *  call <SID>RemoveTrailingSpacesAndSave()
+"autocmd BufWritePre *  if &modified && expand("%:e") != "md" | let l = line(".") | let c = col(".") | %s/\s\+$//e | call cursor(l, c) | endif
 
 autocmd FileType xml,htm,html set mps+=<:>
 
@@ -136,8 +148,12 @@ endif
 "==================="
 " Keymap setting
 "==================="
-inoremap <C-S> <Esc>:update<Cr>:startinsert<Cr>
-nnoremap <C-S> :update<Cr>
+"inoremap <C-S> <Esc>:update<Cr>:startinsert<Cr>
+"nnoremap <C-S> :update<Cr>
+
+nnoremap <F1> :update<Cr>
+vnoremap <F1> :update<Cr>
+inoremap <F1> <Esc>:update<Cr>:startinsert<Cr>
 
 inoremap <C-F4>  <Esc>:xall<Cr>
 nnoremap <C-F4>  :xall<Cr>
@@ -492,7 +508,17 @@ nnoremap <silent> <Leader>p9 :set paste<cr>
 nnoremap <Leader>u  viwu
 nnoremap <Leader>U  viwU
 
-vnoremap y ygv<Esc>
+" https://stackoverflow.com/questions/4110348/is-it-possible-to-disable-replace-mode-in-vim
+function <SID>ForbidReplace()
+    if v:insertmode isnot# 'i'
+        call feedkeys("\<Insert>", "n")
+    endif
+endfunction
+augroup ForbidReplaceMode
+    autocmd!
+    autocmd InsertEnter  * call <SID>ForbidReplace()
+    autocmd InsertChange * call <SID>ForbidReplace()
+augroup END
 
 "# select the entrie function for make filetype: $(...) or ${...}
 function! <SID>SelectMakeFunction(magic)
@@ -546,6 +572,162 @@ vnoremap <script> <silent> <Leader>n :call <SID>SetDotConfig(0)<Cr>
 vnoremap <script> <silent> <Leader>y :call <SID>SetDotConfig(1)<Cr>
 nnoremap <script> <silent> <Leader>n :call <SID>SetDotConfig(0)<Cr>
 nnoremap <script> <silent> <Leader>y :call <SID>SetDotConfig(1)<Cr>
+
+function! <SID>ChangeSurroundingBraces()
+	let saved_pos = getpos('.')
+	let line = getline('.')
+	let m = line[saved_pos[2]-1]
+	let n = ''
+	let flags = ''
+
+	let positions = []
+
+	if m == '('
+		let n = ')'
+		let flags = 'cn'
+	elseif m == '['
+		let n = ']'
+		let flags = 'cn'
+	elseif m == '{'
+		let n = '}'
+		let flags = 'cn'
+	elseif m == ')'
+		let m = '('
+		let n = ')'
+		let flags = 'bcn'
+	elseif m == ']'
+		let m = '['
+		let n = ']'
+		let flags = 'bcn'
+	elseif m == '}'
+		let m = '{'
+		let n = '}'
+		let flags = 'bcn'
+	endif
+
+	if flags != '' && n != ''
+		let positions += searchpairpos(m, "", n, flags)
+		let autoselect = 0
+		let pairs = [m . n]
+	else
+		let positions += searchpairpos('(', "", ')', 'bcn')
+		let positions += searchpairpos('[[]', "", ']', 'bcn')
+		let positions += searchpairpos('{', "", '}', 'bcn')
+
+		let min_x = 2000000000
+		let min_y = min_x
+
+	"	echom printf("^^ y=%d, x=%d\n", saved_pos[1], saved_pos[2])
+		let i = 0
+		let autoselect = -1
+		while i < len(positions)
+	"		echom printf("%% i=%d, y=%d, x=%d\n", i, positions[i], positions[i+1])
+			if positions[i] > 0 &&  positions[i+1] > 0
+				let y = abs(positions[i] - saved_pos[1])
+				let x = abs(positions[i+1] - saved_pos[2])
+	"			echom printf("@@ i=%d, y=%d, x=%d\n", i, positions[i], positions[i+1])
+	"			echom printf("@@ min_x %d, min_y %d\n", min_x, min_y)
+				if y < min_y || (y == min_y && x < min_x)
+					let autoselect = i
+	"				echom printf("** select %d, y=%d/%d, x=%d/%d\n", i, y, min_y, x, min_x)
+					let min_x = x
+					let min_y = y
+				endif
+			endif
+			let i += 2
+		endwhile
+		let pairs = ["()", "[]", "{}"]
+	endif
+
+	if autoselect == -1 | return | endif
+
+	call inputsave()
+	let i = input(printf('Going to replace "%s" to: ', pairs[autoselect/2]))
+	call inputrestore()
+
+	let lefts  = { '(' : 'r(', ')' : 'r(', '[' : 'r[', ']' : 'r[', '{' : 'r{', '}' : 'r{', 'x' : 'x' }
+	let rights = { '(' : 'r)', ')' : 'r)', '[' : 'r]', ']' : 'r]', '{' : 'r}', '}' : 'r}', 'x' : "x" }
+	if has_key(lefts, i)
+"		echom printf("You select %s\r", i)
+		let cmds = [ "normal! %" . rights[i], "normal! " . lefts[i] ]
+		for cmd in cmds
+			call cursor(positions[autoselect], positions[autoselect+1])
+			exec cmd
+		endfor
+	endif
+
+	call setpos('.', saved_pos)
+endfunction
+
+noremap <script> <silent> <C-]>  :call <SID>ChangeSurroundingBraces()<Cr>
+
+" https://vim.fandom.com/wiki/Page_up/down_and_keep_cursor_position
+" i could'nt find any get_number_of_visible_lines function, so i made my own.
+function GetNumberOfVisibleLines()
+  let cur_line = line(".")
+  let cur_col = virtcol(".")
+  normal H
+  let top_line = line(".")
+  normal L
+  let bot_line = line(".")
+  execute "normal " . cur_line . "G"
+  execute "normal " . cur_col . "|"
+  return bot_line - top_line
+endfunc
+
+" noremap <PageUp> 39<C-U>:set scroll=0<CR>
+function! MyPageUp()
+"  let visible_lines = GetNumberOfVisibleLines()
+  let visible_lines = &lines
+  execute "normal " . visible_lines . "\<C-U>:set scroll=0\r"
+endfunction
+
+" noremap <PageDown> 39<C-D>:set scroll=0<CR>
+function! MyPageDown()
+"  let visible_lines = GetNumberOfVisibleLines()
+  let visible_lines = &lines
+  execute "normal " . visible_lines . "\<C-D>:set scroll=0\r"
+endfunction
+
+" BorlandPascal pageup/down behaviour!
+" todo: when hitting top/bottom of file, then restore Y to lastY
+"noremap <PageUp> :call MyPageUp()<CR>
+"noremap <PageDown> :call MyPageDown()<CR>
+
+function! <SID>AlignToLeftBrace()
+	let saved_pos = getpos('.')
+	echom printf("[%d,%d]", saved_pos[1], saved_pos[2])
+	let preline = getline(saved_pos[1] - 1)
+	let line = getline('.')
+	let i = stridx(preline, '(')
+
+	if i == -1
+		return
+	endif
+
+	let i += 1
+	while i < strlen(preline)
+		if preline[i] != ' ' && preline[i] != "\t" | break | endif
+	endwhile
+
+	let newline = ''
+	while i > 0
+		let newline .= ' '
+		let i -= 1
+	endwhile
+
+	let i = 0
+	while i < strlen(line)
+		if line[i] != ' ' && line[i] != "\t" | break | endif
+		let i += 1
+	endwhile
+
+	let newline .= strpart(line, i)
+	call setline('.', newline)
+
+endfunction
+
+map <script> <silent> <Leader>( :call <SID>AlignToLeftBrace()<Cr>
 
 set backspace=indent,eol,start
 set autoread
