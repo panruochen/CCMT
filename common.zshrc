@@ -125,7 +125,8 @@ precmd() {
 	n=${#prompt_colors[*]}
 	PS1=$'\n'
 #	j="${__yunz_MARK_R:- }"
-	j="${__yunz_marks}"
+	[ -n "$YUNZ_HOSTNAME" ] && j+="$YUNZ_HOSTNAME "
+	j+="${__yunz_marks}"
 
 	i=$((RANDOM%n))
 	if [ -n "${j/ /}" ]; then
